@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+body {
+  font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #e7e5e4;
+  font-size: 0.875rem;
+}
+
+th {
+  color: #57534e;
+  font-weight: 600;
+  background: #fafaf9;
+}

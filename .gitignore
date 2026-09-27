@@ -1,0 +1,15 @@
+# Dependencies & build
+node_modules/
+dist/
+.expo/
+*.tsbuildinfo
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.cursor/
+.DS_Store
+*.pem

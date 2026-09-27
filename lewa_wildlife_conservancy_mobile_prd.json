@@ -1,0 +1,1401 @@
+{
+  "document": {
+    "title": "Lewa Wildlife Conservancy Mobile Application - Product Requirements Document",
+    "version": "1.0",
+    "status": "Implementation Ready",
+    "basis": "Based on the supplied Kenya Methodist University research project proposal, with implementation details added for the selected modern technology stack.",
+    "source_scope": "The proposal defines a Lewa Conservancy mobile application with an administrator web interface, database, visitor services, bookings, donations, wildlife information, conservation education, community engagement, events, tourism services, search, help, reports, feedback, payments, notifications, and About Us content.",
+    "source_note": "The proposal explicitly names Android Studio and MySQL, but does not specify a mobile programming language, API architecture, authentication provider, push-notification provider, or payment gateway. This PRD replaces those implementation choices with the user's selected stack while preserving the proposed functional scope."
+  },
+  "technology_stack": {
+    "mobile": {
+      "framework": "React Native",
+      "platform_tooling": "Expo",
+      "language": "TypeScript",
+      "navigation": "Expo Router",
+      "forms_validation": "React Hook Form + Zod",
+      "server_state": "TanStack Query where useful; Supabase client for direct data access",
+      "local_storage": "AsyncStorage or Expo SecureStore depending on sensitivity",
+      "notifications": "Expo Notifications",
+      "maps_location": "Expo Location + a map provider if maps are required",
+      "images": "Expo Image",
+      "testing": "Jest + React Native Testing Library; Expo/EAS build testing"
+    },
+    "backend": {
+      "platform": "Supabase",
+      "services": [
+        "PostgreSQL database",
+        "Supabase Auth",
+        "Row Level Security",
+        "Storage",
+        "Realtime where useful",
+        "Edge Functions for trusted server-side operations"
+      ]
+    },
+    "database": {
+      "engine": "PostgreSQL",
+      "design": "Relational, normalized, role-aware, auditable"
+    },
+    "authentication": {
+      "provider": "Supabase Auth",
+      "methods": [
+        "Email/password",
+        "Email verification",
+        "Password reset",
+        "Optional phone authentication if required later"
+      ],
+      "roles": [
+        "visitor",
+        "donor",
+        "researcher",
+        "community_member",
+        "staff",
+        "administrator",
+        "super_admin"
+      ]
+    },
+    "payments": {
+      "provider": "Paystack",
+      "scope": [
+        "Bookings where payment is required",
+        "Tourism services where payment is required",
+        "Donations"
+      ],
+      "security": "Never trust payment status from the mobile client. Verify transactions server-side through a Supabase Edge Function and Paystack webhook."
+    },
+    "admin": {
+      "framework": "React + Vite + TypeScript",
+      "styling": "Tailwind CSS",
+      "ui": "Accessible reusable component system",
+      "charts": "A charting library such as Recharts",
+      "data": "Supabase client with RLS and privileged operations through Edge Functions"
+    },
+    "deployment": {
+      "mobile": "Expo EAS Build / EAS Submit",
+      "admin": "Static hosting such as Vercel or Netlify",
+      "backend": "Supabase",
+      "environment_management": "Separate development, staging, and production environments where practical"
+    }
+  },
+  "product_summary": {
+    "name": "Lewa Wildlife Conservancy",
+    "product_type": "Wildlife conservation, tourism, stakeholder engagement and visitor-service mobile platform",
+    "primary_goal": "Give visitors, tourists, researchers, donors, community members and other stakeholders convenient access to Lewa information and services while giving staff a centralized administrative platform.",
+    "primary_platform": "Mobile-first application with an administrator web dashboard",
+    "core_value": [
+      "Discover wildlife and conservation information",
+      "Discover tourism services and activities",
+      "Book visits, tours, accommodation and conservation activities",
+      "Receive important conservation and wildlife updates",
+      "Register for events",
+      "Make donations",
+      "Submit inquiries and feedback",
+      "Access educational resources",
+      "Allow administrators to manage content, bookings, users, donations and reports"
+    ]
+  },
+  "source_defined_modules": [
+    "Database",
+    "Administrator",
+    "Finance",
+    "Wildlife Management",
+    "Visitor",
+    "Booking",
+    "Donor",
+    "Conservation Education",
+    "Community Engagement",
+    "Event Management",
+    "Tourism Services",
+    "Search",
+    "Help",
+    "Reports",
+    "Feedback",
+    "Payment",
+    "Notification",
+    "About Us"
+  ],
+  "user_roles": {
+    "guest": {
+      "description": "Unauthenticated visitor exploring public content.",
+      "permissions": [
+        "View public wildlife information",
+        "View public conservation information",
+        "Browse tourism services",
+        "Browse events",
+        "Read education content",
+        "Search public content",
+        "View About Us",
+        "View Help/FAQ",
+        "Start account registration"
+      ]
+    },
+    "visitor": {
+      "description": "Authenticated visitor or tourist.",
+      "permissions": [
+        "Manage profile",
+        "Create and manage bookings",
+        "View booking history",
+        "Make eligible payments",
+        "Receive notifications",
+        "Submit inquiries",
+        "Submit feedback",
+        "Register for events",
+        "Save useful content if implemented",
+        "Manage notification preferences"
+      ]
+    },
+    "donor": {
+      "description": "User who contributes to conservation projects.",
+      "permissions": [
+        "Browse donation campaigns/projects",
+        "Make donations",
+        "View donation history",
+        "Receive donation/payment confirmations",
+        "View receipts where supported"
+      ]
+    },
+    "researcher": {
+      "description": "Research-oriented stakeholder.",
+      "permissions": [
+        "Browse wildlife and conservation information",
+        "Browse research-related public content",
+        "Submit inquiries",
+        "Access any resources explicitly published for researchers"
+      ]
+    },
+    "community_member": {
+      "description": "Member of surrounding communities.",
+      "permissions": [
+        "View community programs",
+        "View announcements",
+        "Submit inquiries or feedback",
+        "Access published community resources"
+      ]
+    },
+    "staff": {
+      "description": "Internal operational user.",
+      "permissions": [
+        "Access assigned administrative modules",
+        "Manage relevant records",
+        "Process bookings",
+        "Respond to inquiries",
+        "Publish or update content if granted",
+        "View operational reports if granted"
+      ]
+    },
+    "administrator": {
+      "description": "Full operational administrator.",
+      "permissions": [
+        "Manage users",
+        "Manage wildlife",
+        "Manage tourism services",
+        "Manage bookings",
+        "Manage events",
+        "Manage education content",
+        "Manage community content",
+        "Manage donation campaigns",
+        "Manage notifications",
+        "Manage feedback",
+        "Manage payments",
+        "Generate reports",
+        "Manage system settings"
+      ]
+    },
+    "super_admin": {
+      "description": "Highest-level system administrator.",
+      "permissions": [
+        "All administrator permissions",
+        "Manage administrator/staff accounts",
+        "Manage roles and permissions",
+        "Review audit logs",
+        "Configure system-level settings"
+      ]
+    }
+  },
+  "mobile_information_architecture": {
+    "bottom_navigation": [
+      {
+        "label": "Home",
+        "purpose": "Discovery, important updates and quick actions"
+      },
+      {
+        "label": "Explore",
+        "purpose": "Wildlife, tourism, conservation, education and events"
+      },
+      {
+        "label": "Bookings",
+        "purpose": "Upcoming and historical bookings"
+      },
+      {
+        "label": "Notifications",
+        "purpose": "Alerts and announcements"
+      },
+      {
+        "label": "Profile",
+        "purpose": "Account, payments, preferences, help and settings"
+      }
+    ],
+    "global_actions": [
+      "Search",
+      "Notifications",
+      "Primary call-to-action",
+      "Back navigation",
+      "Share where appropriate"
+    ]
+  },
+  "mobile_screens": {
+    "onboarding": [
+      "Splash screen",
+      "Welcome",
+      "What Lewa offers",
+      "Wildlife and conservation highlights",
+      "Tourism and booking introduction",
+      "Notification permission explanation",
+      "Authentication choice"
+    ],
+    "authentication": [
+      "Sign in",
+      "Create account",
+      "Email verification",
+      "Forgot password",
+      "Reset password",
+      "Optional profile completion"
+    ],
+    "home": [
+      "Hero/welcome area",
+      "Search",
+      "Quick actions",
+      "Featured tourism services",
+      "Featured wildlife",
+      "Upcoming events",
+      "Conservation highlights",
+      "Donation campaign",
+      "Latest announcements",
+      "Emergency/important alert area if published"
+    ],
+    "explore": [
+      "Explore landing",
+      "Wildlife categories",
+      "Wildlife species detail",
+      "Tourism services",
+      "Tourism service detail",
+      "Conservation programs",
+      "Education content",
+      "Community programs",
+      "Events list",
+      "Event detail",
+      "Search results",
+      "Filters"
+    ],
+    "wildlife": {
+      "list_features": [
+        "Search by species name",
+        "Filter by category",
+        "Featured species",
+        "Conservation status",
+        "Image cards"
+      ],
+      "detail_fields": [
+        "Name",
+        "Common name",
+        "Scientific name if available",
+        "Description",
+        "Conservation information",
+        "Habitat",
+        "Behavior or facts",
+        "Images",
+        "Related conservation programs",
+        "Related updates"
+      ]
+    },
+    "tourism": {
+      "features": [
+        "Browse activities",
+        "View service details",
+        "View availability where configured",
+        "Select date",
+        "Select participants",
+        "Select optional extras",
+        "Review price",
+        "Create booking",
+        "Pay if required",
+        "Receive confirmation"
+      ],
+      "service_types": [
+        "Tours",
+        "Safaris",
+        "Accommodation",
+        "Conservation activities",
+        "Other tourism services"
+      ]
+    },
+    "booking": {
+      "flow": [
+        "Select service",
+        "Select date/time if applicable",
+        "Select participants",
+        "Enter guest details",
+        "Review booking",
+        "Apply eligible discount/promo if implemented",
+        "Select payment option",
+        "Pay",
+        "Verify payment",
+        "Show confirmation",
+        "Send notification",
+        "Store booking history"
+      ],
+      "statuses": [
+        "draft",
+        "pending_payment",
+        "payment_verification",
+        "confirmed",
+        "pending_review",
+        "cancelled",
+        "completed",
+        "refunded"
+      ]
+    },
+    "donations": {
+      "features": [
+        "Browse active conservation campaigns",
+        "View campaign details",
+        "Select amount",
+        "Optional donor information",
+        "Pay",
+        "Receive confirmation",
+        "View donation history"
+      ]
+    },
+    "events": {
+      "features": [
+        "Upcoming events",
+        "Past events",
+        "Event detail",
+        "Date/time",
+        "Location",
+        "Description",
+        "Registration where enabled",
+        "Calendar/share action where appropriate"
+      ]
+    },
+    "education": {
+      "features": [
+        "Articles/resources",
+        "Categories",
+        "Search",
+        "Featured learning content",
+        "Read/view detail",
+        "Related wildlife"
+      ]
+    },
+    "community": {
+      "features": [
+        "Community programs",
+        "Announcements",
+        "Development initiatives",
+        "Published opportunities",
+        "Contact/inquiry action"
+      ]
+    },
+    "notifications": {
+      "types": [
+        "Wildlife sighting",
+        "Conservation announcement",
+        "Event reminder",
+        "Booking status",
+        "Payment confirmation",
+        "Donation confirmation",
+        "General announcement"
+      ],
+      "requirements": [
+        "Unread count",
+        "Read/unread state",
+        "Deep-link to relevant screen",
+        "Notification preferences",
+        "Do not expose sensitive information in notification previews"
+      ]
+    },
+    "profile": {
+      "sections": [
+        "Personal information",
+        "Bookings",
+        "Payments",
+        "Donations",
+        "Notification preferences",
+        "Language if supported",
+        "Help and FAQ",
+        "Contact",
+        "Privacy",
+        "Terms",
+        "Sign out"
+      ]
+    },
+    "feedback": {
+      "fields": [
+        "Category",
+        "Subject",
+        "Message",
+        "Optional booking reference",
+        "Optional rating",
+        "Attachments only if required and supported"
+      ]
+    },
+    "help": {
+      "features": [
+        "FAQ",
+        "Contact information",
+        "Booking help",
+        "Payment help",
+        "Account help",
+        "Feedback/inquiry form"
+      ]
+    }
+  },
+  "admin_dashboard": {
+    "layout": {
+      "sidebar": [
+        "Dashboard",
+        "Users",
+        "Wildlife",
+        "Tourism Services",
+        "Bookings",
+        "Accommodation",
+        "Events",
+        "Conservation",
+        "Education",
+        "Community",
+        "Donations",
+        "Payments",
+        "Notifications",
+        "Feedback",
+        "Reports",
+        "Content",
+        "Settings",
+        "Audit Logs"
+      ],
+      "header": [
+        "Global search",
+        "Notifications",
+        "Current user",
+        "Role indicator"
+      ]
+    },
+    "dashboard": {
+      "kpis": [
+        "Total users",
+        "Upcoming bookings",
+        "Pending bookings",
+        "Revenue",
+        "Donations",
+        "Upcoming events",
+        "Unread feedback",
+        "Published wildlife/conservation updates"
+      ],
+      "widgets": [
+        "Booking trend",
+        "Revenue trend",
+        "Donation trend",
+        "Recent bookings",
+        "Recent payments",
+        "Recent feedback",
+        "Upcoming events",
+        "Recent notifications"
+      ]
+    },
+    "crud_requirements": {
+      "users": [
+        "List",
+        "Search",
+        "Filter",
+        "View profile",
+        "Activate/deactivate",
+        "Assign role",
+        "Review activity where permitted"
+      ],
+      "wildlife": [
+        "Create",
+        "Edit",
+        "Publish/unpublish",
+        "Archive",
+        "Upload images",
+        "Categorize",
+        "Manage conservation information"
+      ],
+      "tourism_services": [
+        "Create",
+        "Edit",
+        "Publish/unpublish",
+        "Set price",
+        "Set capacity",
+        "Set availability",
+        "Upload images",
+        "Manage booking requirements"
+      ],
+      "bookings": [
+        "View",
+        "Search",
+        "Filter",
+        "Confirm",
+        "Reject/cancel",
+        "Mark completed",
+        "Review payment status",
+        "Export"
+      ],
+      "events": [
+        "Create",
+        "Edit",
+        "Publish",
+        "Schedule",
+        "Manage registration"
+      ],
+      "donations": [
+        "Create campaigns",
+        "View donations",
+        "Filter",
+        "View totals",
+        "Export records"
+      ],
+      "notifications": [
+        "Compose",
+        "Select audience",
+        "Schedule",
+        "Send",
+        "View delivery/result status"
+      ],
+      "feedback": [
+        "List",
+        "Assign",
+        "Respond",
+        "Change status",
+        "Archive"
+      ],
+      "reports": [
+        "Bookings",
+        "Revenue",
+        "Donations",
+        "Users",
+        "Events",
+        "Tourism services",
+        "Conservation activity",
+        "Export CSV/PDF where implemented"
+      ]
+    }
+  },
+  "database_design": {
+    "principles": [
+      "Use UUID primary keys",
+      "Use created_at and updated_at timestamps",
+      "Use foreign keys",
+      "Use enums or controlled status values where appropriate",
+      "Use soft deletion/archive states for important content",
+      "Use audit fields for administrative changes",
+      "Do not store secrets in database rows accessible to clients"
+    ],
+    "tables": [
+      {
+        "name": "profiles",
+        "purpose": "Application-level user profile linked to auth.users",
+        "key_fields": [
+          "id",
+          "full_name",
+          "phone",
+          "avatar_url",
+          "role",
+          "status",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      {
+        "name": "wildlife_species",
+        "purpose": "Wildlife information",
+        "key_fields": [
+          "id",
+          "name",
+          "scientific_name",
+          "category",
+          "description",
+          "habitat",
+          "conservation_status",
+          "featured",
+          "published",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      {
+        "name": "wildlife_images",
+        "purpose": "Images associated with wildlife",
+        "key_fields": [
+          "id",
+          "species_id",
+          "storage_path",
+          "caption",
+          "sort_order"
+        ]
+      },
+      {
+        "name": "conservation_programs",
+        "purpose": "Conservation initiatives",
+        "key_fields": [
+          "id",
+          "title",
+          "summary",
+          "description",
+          "cover_image",
+          "status",
+          "published_at"
+        ]
+      },
+      {
+        "name": "tourism_services",
+        "purpose": "Tours, safaris, accommodation and other tourism services",
+        "key_fields": [
+          "id",
+          "title",
+          "service_type",
+          "description",
+          "price",
+          "currency",
+          "capacity",
+          "duration",
+          "location",
+          "cover_image",
+          "status",
+          "featured"
+        ]
+      },
+      {
+        "name": "service_availability",
+        "purpose": "Availability rules and dates",
+        "key_fields": [
+          "id",
+          "service_id",
+          "date",
+          "start_time",
+          "end_time",
+          "capacity",
+          "remaining_capacity",
+          "status"
+        ]
+      },
+      {
+        "name": "bookings",
+        "purpose": "Visitor reservations",
+        "key_fields": [
+          "id",
+          "user_id",
+          "service_id",
+          "booking_date",
+          "participants",
+          "amount",
+          "currency",
+          "status",
+          "payment_status",
+          "special_requests",
+          "created_at"
+        ]
+      },
+      {
+        "name": "booking_guests",
+        "purpose": "Guest details for a booking",
+        "key_fields": [
+          "id",
+          "booking_id",
+          "full_name",
+          "email",
+          "phone",
+          "country"
+        ]
+      },
+      {
+        "name": "payments",
+        "purpose": "Payment records",
+        "key_fields": [
+          "id",
+          "user_id",
+          "booking_id",
+          "donation_id",
+          "provider",
+          "reference",
+          "amount",
+          "currency",
+          "status",
+          "paid_at",
+          "provider_response_summary"
+        ]
+      },
+      {
+        "name": "donation_campaigns",
+        "purpose": "Donation projects",
+        "key_fields": [
+          "id",
+          "title",
+          "summary",
+          "description",
+          "target_amount",
+          "amount_raised",
+          "cover_image",
+          "status"
+        ]
+      },
+      {
+        "name": "donations",
+        "purpose": "Individual donation records",
+        "key_fields": [
+          "id",
+          "campaign_id",
+          "user_id",
+          "amount",
+          "currency",
+          "payment_id",
+          "status",
+          "created_at"
+        ]
+      },
+      {
+        "name": "events",
+        "purpose": "Conservation and community events",
+        "key_fields": [
+          "id",
+          "title",
+          "description",
+          "event_type",
+          "start_at",
+          "end_at",
+          "location",
+          "capacity",
+          "registration_required",
+          "status",
+          "cover_image"
+        ]
+      },
+      {
+        "name": "event_registrations",
+        "purpose": "Event attendance registrations",
+        "key_fields": [
+          "id",
+          "event_id",
+          "user_id",
+          "status",
+          "created_at"
+        ]
+      },
+      {
+        "name": "education_resources",
+        "purpose": "Conservation education content",
+        "key_fields": [
+          "id",
+          "title",
+          "summary",
+          "content",
+          "category",
+          "cover_image",
+          "published",
+          "created_at"
+        ]
+      },
+      {
+        "name": "community_programs",
+        "purpose": "Community engagement information",
+        "key_fields": [
+          "id",
+          "title",
+          "summary",
+          "description",
+          "location",
+          "status",
+          "cover_image"
+        ]
+      },
+      {
+        "name": "notifications",
+        "purpose": "In-app notification records",
+        "key_fields": [
+          "id",
+          "user_id",
+          "title",
+          "body",
+          "type",
+          "data",
+          "read_at",
+          "created_at"
+        ]
+      },
+      {
+        "name": "notification_preferences",
+        "purpose": "Per-user notification preferences",
+        "key_fields": [
+          "user_id",
+          "wildlife_alerts",
+          "events",
+          "bookings",
+          "payments",
+          "conservation_updates",
+          "general"
+        ]
+      },
+      {
+        "name": "feedback",
+        "purpose": "User feedback and complaints",
+        "key_fields": [
+          "id",
+          "user_id",
+          "category",
+          "subject",
+          "message",
+          "rating",
+          "status",
+          "admin_response",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      {
+        "name": "faqs",
+        "purpose": "Help content",
+        "key_fields": [
+          "id",
+          "question",
+          "answer",
+          "category",
+          "published",
+          "sort_order"
+        ]
+      },
+      {
+        "name": "announcements",
+        "purpose": "General and conservation announcements",
+        "key_fields": [
+          "id",
+          "title",
+          "body",
+          "type",
+          "priority",
+          "published",
+          "publish_at",
+          "expires_at"
+        ]
+      },
+      {
+        "name": "audit_logs",
+        "purpose": "Administrative activity tracking",
+        "key_fields": [
+          "id",
+          "actor_user_id",
+          "action",
+          "entity_type",
+          "entity_id",
+          "metadata",
+          "created_at"
+        ]
+      }
+    ]
+  },
+  "security_and_rls": {
+    "requirements": [
+      "Enable Row Level Security on all exposed application tables.",
+      "Users can read public published content only.",
+      "Users can read and update only their own profile.",
+      "Users can read only their own bookings, payments and donations unless the role grants broader access.",
+      "Staff/admin access must be role-controlled.",
+      "Never place service-role credentials in the mobile application or browser.",
+      "Use Edge Functions for privileged operations such as Paystack verification, webhook processing, role-sensitive operations and secret-bearing integrations.",
+      "Validate all user input server-side.",
+      "Rate-limit sensitive actions.",
+      "Do not trust client-provided prices, payment statuses or role values.",
+      "Store only the minimum personal information needed.",
+      "Provide account deletion/data removal workflow where required by policy.",
+      "Keep an audit trail for sensitive administrative operations."
+    ]
+  },
+  "payments": {
+    "flow": [
+      "Client creates a pending booking or donation intent.",
+      "Server calculates or verifies the amount from trusted database data.",
+      "Edge Function initializes Paystack transaction.",
+      "Client completes payment using the approved Paystack flow.",
+      "Paystack sends webhook/event.",
+      "Edge Function verifies transaction.",
+      "Payment record is updated.",
+      "Booking/donation is confirmed only after verified payment.",
+      "User receives confirmation notification."
+    ],
+    "failure_states": [
+      "Payment cancelled",
+      "Payment failed",
+      "Payment pending",
+      "Payment verification failed",
+      "Duplicate webhook",
+      "Amount mismatch",
+      "Booking no longer available"
+    ]
+  },
+  "notifications": {
+    "architecture": [
+      "Store in-app notification record in Supabase.",
+      "Register Expo push token for authenticated devices.",
+      "Use a secure server-side function to send push notifications.",
+      "Deep-link notification taps to the relevant mobile screen.",
+      "Allow users to control categories of non-critical notifications."
+    ],
+    "examples": [
+      "Your booking has been confirmed.",
+      "A new conservation update has been published.",
+      "An event you registered for is approaching.",
+      "Your donation was received."
+    ]
+  },
+  "state_and_data_strategy": {
+    "rules": [
+      "Use server state for remote Supabase data.",
+      "Use local component state for temporary UI state.",
+      "Cache read-heavy public content where useful.",
+      "Invalidate relevant queries after mutations.",
+      "Show skeletons rather than blank screens during loading.",
+      "Use optimistic updates only where rollback is safe.",
+      "Handle offline/poor-network states gracefully.",
+      "Never treat cached booking/payment status as authoritative."
+    ]
+  },
+  "error_and_empty_states": {
+    "required": [
+      "No internet connection",
+      "Request timeout",
+      "Server error",
+      "Unauthorized",
+      "Session expired",
+      "No results",
+      "No bookings",
+      "No notifications",
+      "No donation history",
+      "Payment failed",
+      "Booking unavailable",
+      "Content unavailable",
+      "Image failed to load"
+    ],
+    "ux_rule": "Every major screen must define loading, success, empty, error and retry states."
+  },
+  "accessibility": {
+    "requirements": [
+      "Readable text sizes",
+      "Sufficient contrast",
+      "Touch targets around 44x44 points or larger where practical",
+      "Icons must have accessible labels",
+      "Do not communicate meaning through color alone",
+      "Support dynamic text sizing where feasible",
+      "Use semantic labels for forms and controls",
+      "Keep interactions simple and predictable"
+    ]
+  },
+  "analytics_and_observability": {
+    "events_to_consider": [
+      "App opened",
+      "Onboarding completed",
+      "Account created",
+      "Search performed",
+      "Wildlife viewed",
+      "Tourism service viewed",
+      "Booking started",
+      "Booking completed",
+      "Payment initiated",
+      "Payment completed",
+      "Donation initiated",
+      "Donation completed",
+      "Event viewed",
+      "Event registration completed",
+      "Notification opened",
+      "Feedback submitted"
+    ],
+    "privacy_rule": "Collect only analytics necessary for product improvement and respect applicable privacy requirements."
+  },
+  "performance_requirements": {
+    "mobile": [
+      "Use optimized images and appropriate resolutions.",
+      "Lazy-load non-critical content.",
+      "Paginate long lists.",
+      "Avoid unnecessary re-renders.",
+      "Keep initial app experience lightweight.",
+      "Use skeleton placeholders.",
+      "Avoid loading every wildlife image on the home screen."
+    ],
+    "admin": [
+      "Paginate tables.",
+      "Debounce search.",
+      "Use server-side filtering where practical.",
+      "Avoid rendering thousands of rows at once.",
+      "Lazy-load heavy dashboard sections."
+    ]
+  },
+  "testing_requirements": {
+    "unit": [
+      "Validation schemas",
+      "Price calculations",
+      "Booking state transitions",
+      "Utility functions"
+    ],
+    "integration": [
+      "Authentication",
+      "Booking creation",
+      "Payment verification",
+      "Donation flow",
+      "Notification registration",
+      "Admin CRUD"
+    ],
+    "e2e": [
+      "Register/login",
+      "Browse wildlife",
+      "Browse tourism service",
+      "Create booking",
+      "Complete payment in test environment",
+      "View booking",
+      "Make donation",
+      "Receive/open notification"
+    ],
+    "security": [
+      "RLS policy tests",
+      "Role access tests",
+      "Unauthorized API attempts",
+      "Payment tampering tests"
+    ]
+  },
+  "stitch_frontend_design_guide": {
+    "design_direction": {
+      "style": "Modern minimalist African conservation aesthetic",
+      "principles": [
+        "Premium but approachable",
+        "Nature-led without looking rustic",
+        "Photography-first",
+        "Clean layouts",
+        "Generous whitespace",
+        "Strong typography",
+        "Subtle rounded corners",
+        "Minimal shadows",
+        "Clear hierarchy",
+        "Fast scanning"
+      ],
+      "avoid": [
+        "Generic corporate dashboard styling in the mobile app",
+        "Excessive gradients",
+        "Overly decorative wildlife motifs",
+        "Crowded cards",
+        "Too many colors",
+        "Tiny text",
+        "Excessive animations",
+        "Glassmorphism-heavy UI",
+        "Stock-photo collage appearance"
+      ]
+    },
+    "color_system": {
+      "note": "Use these as design tokens, not hard-coded values scattered through components.",
+      "tokens": {
+        "primary": "#2F5D3A",
+        "primary_dark": "#23482D",
+        "primary_light": "#E8F0EA",
+        "accent": "#C89B3C",
+        "background": "#F7F6F1",
+        "surface": "#FFFFFF",
+        "surface_muted": "#F0F1EC",
+        "text": "#172019",
+        "text_secondary": "#667068",
+        "border": "#DDE2DC",
+        "success": "#2E7D5B",
+        "warning": "#B7791F",
+        "error": "#B54747",
+        "info": "#3B6E8C"
+      }
+    },
+    "typography": {
+      "recommended_family": "Inter or another highly legible modern sans-serif",
+      "scale": {
+        "display": "32px / bold",
+        "h1": "28px / bold",
+        "h2": "22px / semibold",
+        "h3": "18px / semibold",
+        "body": "16px / regular",
+        "body_small": "14px / regular",
+        "caption": "12px / medium"
+      },
+      "rules": [
+        "Use sentence case.",
+        "Keep body text comfortable to scan.",
+        "Avoid all-caps except small metadata labels.",
+        "Use weight to create hierarchy rather than excessive color."
+      ]
+    },
+    "spacing": {
+      "base_unit": "4px",
+      "recommended": [
+        "4px",
+        "8px",
+        "12px",
+        "16px",
+        "20px",
+        "24px",
+        "32px",
+        "40px",
+        "48px"
+      ]
+    },
+    "radius": {
+      "small": "8px",
+      "medium": "12px",
+      "large": "18px",
+      "pill": "999px"
+    },
+    "elevation": {
+      "rule": "Prefer borders and surface contrast; use subtle shadows only for floating elements and important cards."
+    },
+    "imagery": {
+      "direction": "Use authentic high-quality wildlife, landscape, conservation and community photography.",
+      "rules": [
+        "Prefer full-bleed hero imagery for major discovery areas.",
+        "Use consistent aspect ratios in cards.",
+        "Use object-cover behavior for thumbnails.",
+        "Overlay text only when contrast remains excellent.",
+        "Provide captions/alt text where appropriate."
+      ]
+    },
+    "mobile_components": [
+      "PrimaryButton",
+      "SecondaryButton",
+      "TertiaryButton",
+      "IconButton",
+      "SearchBar",
+      "SectionHeader",
+      "WildlifeCard",
+      "TourismCard",
+      "EventCard",
+      "AnnouncementCard",
+      "DonationCard",
+      "BookingCard",
+      "NotificationItem",
+      "ProfileRow",
+      "FilterChip",
+      "StatusBadge",
+      "EmptyState",
+      "ErrorState",
+      "SkeletonCard",
+      "BottomSheet",
+      "Modal",
+      "DatePicker",
+      "QuantityStepper",
+      "InputField",
+      "SelectField",
+      "Textarea",
+      "Avatar",
+      "Toast",
+      "BottomTabBar"
+    ],
+    "mobile_screen_design_rules": {
+      "home": "Large visual hero, compact search, 2-4 quick actions, then horizontally scrollable featured sections and a clear latest-update feed.",
+      "explore": "Use category chips and a two-column image-led discovery layout where appropriate. Keep filters easy to access.",
+      "wildlife_detail": "Large image header followed by concise species facts, conservation information and related content.",
+      "tourism_detail": "Photography-led header, concise description, key facts, pricing, availability and persistent booking CTA.",
+      "booking": "Use a step-by-step flow with one primary action per screen or clearly grouped sections. Keep price summary visible.",
+      "donations": "Make campaign purpose prominent, show impact information, provide simple amount selection and a clear payment action.",
+      "notifications": "Group by date where useful, emphasize unread items, keep rows compact but readable.",
+      "profile": "Simple grouped settings list with clear section labels and no unnecessary visual complexity."
+    },
+    "admin_design": {
+      "style": "Minimal professional operations dashboard",
+      "layout": "240-280px sidebar, sticky top header, spacious content area",
+      "cards": "Use compact KPI cards with clear numbers and small contextual labels.",
+      "tables": "Dense but readable, with filters, search, sorting and pagination.",
+      "forms": "Two-column desktop layouts where appropriate, single-column for complex forms.",
+      "charts": "Simple charts with restrained styling and strong labels.",
+      "responsive": "At tablet width, collapse sidebar; at mobile width, use a drawer and simplified table views."
+    }
+  },
+  "stitch_master_prompt": {
+    "instruction": "Design a complete modern mobile application UI for Lewa Wildlife Conservancy using the requirements in this JSON. Do not invent unrelated features. Create a coherent reusable design system and apply it consistently across all screens.",
+    "product": "Lewa Wildlife Conservancy mobile application",
+    "visual_style": "Modern minimalist African conservation aesthetic. Premium, calm, nature-inspired, photography-first, spacious, clean and highly usable.",
+    "primary_users": [
+      "Visitors",
+      "Tourists",
+      "Researchers",
+      "Donors",
+      "Community members"
+    ],
+    "primary_navigation": [
+      "Home",
+      "Explore",
+      "Bookings",
+      "Notifications",
+      "Profile"
+    ],
+    "required_screens": [
+      "Splash",
+      "Onboarding",
+      "Sign in",
+      "Create account",
+      "Home",
+      "Explore",
+      "Wildlife list",
+      "Wildlife detail",
+      "Tourism services",
+      "Tourism service detail",
+      "Booking flow",
+      "Booking confirmation",
+      "Booking history",
+      "Events",
+      "Event detail",
+      "Conservation programs",
+      "Education",
+      "Community",
+      "Donations",
+      "Donation campaign detail",
+      "Donation success",
+      "Notifications",
+      "Profile",
+      "Edit profile",
+      "Notification preferences",
+      "Help/FAQ",
+      "Feedback",
+      "Search results",
+      "Settings"
+    ],
+    "interaction_requirements": [
+      "Use realistic content hierarchy.",
+      "Show loading, empty and error states.",
+      "Use clear primary CTAs.",
+      "Keep important actions reachable.",
+      "Use bottom sheets for filters and lightweight selections.",
+      "Use confirmation dialogs for destructive actions.",
+      "Use subtle transitions only where they improve comprehension.",
+      "Design for Android first but keep the system compatible with iOS."
+    ],
+    "output_expectation": "Generate polished production-oriented screens, not wireframes. Components should look reusable and consistent enough to translate directly into React Native + Expo."
+  },
+  "ai_development_requirements": {
+    "general_rules_for_coding_agent": [
+      "Read this PRD completely before writing code.",
+      "Do not invent modules outside the approved scope without asking.",
+      "Build reusable components instead of duplicating screen code.",
+      "Use TypeScript strictly; avoid any unless unavoidable.",
+      "Use environment variables for credentials.",
+      "Never expose Supabase service-role keys in the mobile app or admin frontend.",
+      "Use Supabase RLS from the beginning, not as a later task.",
+      "Keep database migrations versioned.",
+      "Create typed database interfaces/generated types.",
+      "Keep business logic out of presentational components.",
+      "Separate UI, data access, validation and domain logic.",
+      "Use feature-based folder organization.",
+      "Handle all loading/error/empty/success states.",
+      "Add validation to every form.",
+      "Use accessible labels and touch targets.",
+      "Optimize images.",
+      "Use pagination for large datasets.",
+      "Never hard-code payment success.",
+      "Use test credentials and sandbox mode during development.",
+      "Write meaningful commit-sized changes.",
+      "Do not refactor unrelated files while implementing a feature."
+    ],
+    "recommended_mobile_structure": [
+      "app/",
+      "components/",
+      "features/",
+      "lib/",
+      "services/",
+      "hooks/",
+      "stores/",
+      "types/",
+      "constants/",
+      "assets/",
+      "utils/"
+    ],
+    "recommended_admin_structure": [
+      "src/pages/",
+      "src/components/",
+      "src/features/",
+      "src/layouts/",
+      "src/lib/",
+      "src/services/",
+      "src/hooks/",
+      "src/types/",
+      "src/utils/"
+    ],
+    "implementation_order": [
+      "1. Project setup and environment configuration",
+      "2. Supabase project and database schema",
+      "3. RLS policies and roles",
+      "4. Authentication",
+      "5. Shared design system",
+      "6. Mobile navigation and app shell",
+      "7. Home and public discovery content",
+      "8. Wildlife module",
+      "9. Tourism services",
+      "10. Booking system",
+      "11. Payments",
+      "12. Donations",
+      "13. Events",
+      "14. Education and community",
+      "15. Notifications",
+      "16. Profile/help/feedback",
+      "17. Admin dashboard",
+      "18. Reports",
+      "19. Testing/security review",
+      "20. Deployment"
+    ],
+    "definition_of_done": [
+      "Feature works on a real device.",
+      "Data is persisted correctly.",
+      "RLS prevents unauthorized access.",
+      "All major states are handled.",
+      "Forms validate correctly.",
+      "Errors are understandable.",
+      "No secret keys are exposed.",
+      "Relevant tests pass.",
+      "UI follows the design system.",
+      "Feature is responsive.",
+      "No critical console/runtime errors remain."
+    ]
+  },
+  "mvp_scope": {
+    "must_have": [
+      "Authentication",
+      "Home",
+      "Wildlife information",
+      "Tourism services",
+      "Booking",
+      "Payment",
+      "Events",
+      "Conservation updates",
+      "Notifications",
+      "Donations",
+      "Profile",
+      "Feedback",
+      "Help",
+      "Admin dashboard",
+      "Basic reports"
+    ],
+    "phase_2": [
+      "Advanced wildlife tracking",
+      "Researcher-specific workspace",
+      "Advanced community engagement workflows",
+      "Offline content packs",
+      "Advanced maps",
+      "Advanced analytics",
+      "Personalized recommendations",
+      "Advanced booking availability engine"
+    ]
+  },
+  "acceptance_criteria": [
+    "A guest can browse public wildlife, tourism, conservation, education and event content.",
+    "A user can create and verify an account.",
+    "An authenticated user can create a tourism booking.",
+    "A booking cannot exceed configured availability.",
+    "Payment status is confirmed server-side.",
+    "A confirmed booking appears in the user's booking history.",
+    "A user can make a donation to an active campaign.",
+    "Donation status is updated only after verified payment.",
+    "Administrators can manage the major content modules.",
+    "Administrators can view bookings, payments and donations.",
+    "Users receive relevant in-app notifications.",
+    "Push notifications can deep-link to relevant content.",
+    "RLS prevents users from accessing another user's private records.",
+    "The application provides clear loading, empty and error states.",
+    "The mobile UI remains usable on common Android screen sizes."
+  ]
+}
