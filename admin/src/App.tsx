@@ -1,114 +1,107 @@
-import { FormEvent, useEffect, useState } from 'react';
-import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { FormEvent, useEffect, useState, type ReactNode } from 'react';
+import { Link, Navigate, Route, Routes } from 'react-router-dom';
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Shell } from './components/shell';
+import type { IconName } from './components/icons';
+import {
+  Badge,
+  Button,
+  Card,
+  CheckField,
+  DataTable,
+  EmptyRow,
+  Field,
+  FormCard,
+  humanize,
+  SectionHeading,
+  SelectField,
+  StatCard,
+  StatusSelect,
+  TextArea,
+} from './components/ui';
 import { useAuth, type Role } from './lib/auth';
 import { formatCurrency, formatDate } from './lib/format';
 import { supabase } from './lib/supabase';
 
-const NAV: { to: string; label: string; min: 'staff' | 'admin' }[] = [
-  { to: '/', label: 'Dashboard', min: 'staff' },
-  { to: '/users', label: 'Users', min: 'admin' },
-  { to: '/wildlife', label: 'Wildlife', min: 'staff' },
-  { to: '/tourism', label: 'Tourism / Accommodation', min: 'staff' },
-  { to: '/bookings', label: 'Bookings', min: 'staff' },
-  { to: '/events', label: 'Events', min: 'staff' },
-  { to: '/conservation', label: 'Conservation', min: 'staff' },
-  { to: '/education', label: 'Education', min: 'staff' },
-  { to: '/community', label: 'Community', min: 'staff' },
-  { to: '/donations', label: 'Donations', min: 'staff' },
-  { to: '/payments', label: 'Payments', min: 'admin' },
-  { to: '/notifications', label: 'Notifications', min: 'staff' },
-  { to: '/feedback', label: 'Feedback', min: 'staff' },
-  { to: '/reports', label: 'Reports', min: 'admin' },
-  { to: '/content', label: 'Content', min: 'staff' },
-  { to: '/settings', label: 'Settings', min: 'admin' },
-  { to: '/audit', label: 'Audit logs', min: 'staff' },
+const METRICS: { key: string; label: string; icon: IconName }[] = [
+  { key: 'profiles', label: 'Users', icon: 'users' },
+  { key: 'bookings', label: 'Bookings', icon: 'calendar' },
+  { key: 'payments', label: 'Payments', icon: 'card' },
+  { key: 'donations', label: 'Donations', icon: 'heart' },
+  { key: 'wildlife_species', label: 'Wildlife', icon: 'leaf' },
+  { key: 'events', label: 'Events', icon: 'flag' },
+  { key: 'feedback', label: 'Feedback', icon: 'message' },
 ];
+
+const BOOKING_STATUSES = ['pending_payment', 'payment_verification', 'confirmed', 'cancelled', 'completed', 'refunded'];
+const FEEDBACK_STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
+const USER_ROLES: Role[] = ['visitor', 'donor', 'researcher', 'community_member', 'staff', 'administrator', 'super_admin'];
 
 export function App() {
   const { loading, session, profile, isStaff } = useAuth();
-  if (loading) return <div className="p-10 text-stone-500">Loading…</div>;
+  if (loading) {
+    return <div className="grid min-h-screen place-items-center bg-[#f6f4ef] text-sm font-medium text-stone-500">Loading…</div>;
+  }
   if (!session) return <Login />;
   if (!isStaff) {
     return (
-      <div className="mx-auto max-w-lg p-10">
-        <h1 className="text-2xl font-semibold">Staff access only</h1>
-        <p className="mt-2 text-stone-600">
-          This dashboard is limited to staff, administrators and super administrators. Your current role is{' '}
-          {profile?.role ?? 'visitor'}.
-        </p>
-        <SignOutButton />
+      <div className="grid min-h-screen place-items-center bg-[#f6f4ef] px-4">
+        <div className="w-full max-w-lg rounded-3xl border border-stone-200/80 bg-white p-8 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-800">Lewa</p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight">Staff access only</h1>
+          <p className="mt-2 text-sm leading-6 text-stone-600">
+            This dashboard is limited to staff, administrators and super administrators. Your current role is{' '}
+            {profile?.role ?? 'visitor'}.
+          </p>
+          <SignOutButton className="mt-6" />
+        </div>
       </div>
     );
   }
   return (
-    <div className="min-h-screen bg-stone-50">
-      <aside className="fixed inset-y-0 left-0 w-64 overflow-y-auto border-r border-stone-200 bg-white p-4">
-        <div className="mb-6">
-          <p className="text-xs uppercase tracking-[0.2em] text-emerald-800">Lewa</p>
-          <h1 className="text-lg font-semibold">Staff dashboard</h1>
-          <p className="text-xs text-stone-500">{profile?.full_name} · {profile?.role}</p>
-        </div>
-        <nav className="space-y-1">
-          {NAV.filter((item) => item.min === 'staff' || profile?.role === 'administrator' || profile?.role === 'super_admin').map((item) => (
-            <NavLink key={item.to} to={item.to} label={item.label} />
-          ))}
-        </nav>
-        <div className="mt-8">
-          <SignOutButton />
-        </div>
-      </aside>
-      <main className="ml-64 p-8">
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/users" element={<AdminOnly><UsersPage /></AdminOnly>} />
-          <Route path="/wildlife" element={<WildlifePage />} />
-          <Route path="/tourism" element={<TourismPage />} />
-          <Route path="/bookings" element={<BookingsPage />} />
-          <Route path="/events" element={<EventsPage />} />
-          <Route path="/conservation" element={<SimpleContent table="conservation_programs" title="Conservation" />} />
-          <Route path="/education" element={<SimpleContent table="education_resources" title="Education" extra={['category', 'reading_minutes']} />} />
-          <Route path="/community" element={<SimpleContent table="community_programs" title="Community" extra={['location']} />} />
-          <Route path="/donations" element={<DonationsPage />} />
-          <Route path="/payments" element={<AdminOnly><PaymentsPage /></AdminOnly>} />
-          <Route path="/notifications" element={<NotificationsPage />} />
-          <Route path="/feedback" element={<FeedbackPage />} />
-          <Route path="/reports" element={<AdminOnly><ReportsPage /></AdminOnly>} />
-          <Route path="/content" element={<ContentPage />} />
-          <Route path="/settings" element={<AdminOnly><SettingsPage /></AdminOnly>} />
-          <Route path="/audit" element={<AuditPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
-    </div>
+    <Shell>
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/users" element={<AdminOnly><UsersPage /></AdminOnly>} />
+        <Route path="/wildlife" element={<WildlifePage />} />
+        <Route path="/tourism" element={<TourismPage />} />
+        <Route path="/bookings" element={<BookingsPage />} />
+        <Route path="/events" element={<EventsPage />} />
+        <Route path="/conservation" element={<SimpleContent table="conservation_programs" title="Conservation" />} />
+        <Route path="/education" element={<SimpleContent table="education_resources" title="Education" extra={['category', 'reading_minutes']} />} />
+        <Route path="/community" element={<SimpleContent table="community_programs" title="Community" extra={['location']} />} />
+        <Route path="/donations" element={<DonationsPage />} />
+        <Route path="/payments" element={<AdminOnly><PaymentsPage /></AdminOnly>} />
+        <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/feedback" element={<FeedbackPage />} />
+        <Route path="/reports" element={<AdminOnly><ReportsPage /></AdminOnly>} />
+        <Route path="/content" element={<ContentPage />} />
+        <Route path="/settings" element={<AdminOnly><SettingsPage /></AdminOnly>} />
+        <Route path="/audit" element={<AuditPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Shell>
   );
 }
 
-function NavLink({ to, label }: { to: string; label: string }) {
-  const loc = useLocation();
-  const active = loc.pathname === to;
-  return (
-    <Link
-      to={to}
-      className={`block rounded-lg px-3 py-2 text-sm ${active ? 'bg-emerald-800 text-white' : 'text-stone-700 hover:bg-stone-100'}`}
-    >
-      {label}
-    </Link>
-  );
-}
-
-function AdminOnly({ children }: { children: React.ReactNode }) {
+function AdminOnly({ children }: { children: ReactNode }) {
   const { isAdmin } = useAuth();
-  if (!isAdmin) return <p className="text-stone-600">Administrator access required.</p>;
+  if (!isAdmin) {
+    return (
+      <Card bodyClassName="p-6">
+        <p className="text-sm text-stone-600">Administrator access required.</p>
+      </Card>
+    );
+  }
   return <>{children}</>;
 }
 
-function SignOutButton() {
+function SignOutButton({ className = '' }: { className?: string }) {
   const { signOut } = useAuth();
   return (
-    <button className="rounded-lg border border-stone-300 px-3 py-1.5 text-sm" onClick={() => void signOut()}>
+    <Button type="button" tone="ghost" className={className} onClick={() => void signOut()}>
       Sign out
-    </button>
+    </Button>
   );
 }
 
@@ -127,55 +120,124 @@ function Login() {
     }
   };
   return (
-    <form onSubmit={(e) => void onSubmit(e)} className="mx-auto mt-24 max-w-md space-y-4 rounded-2xl border border-stone-200 bg-white p-8">
-      <p className="text-xs uppercase tracking-[0.2em] text-emerald-800">Lewa Conservancy</p>
-      <h1 className="text-2xl font-semibold">Staff sign in</h1>
-      <input className="w-full rounded-lg border px-3 py-2" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-      <input className="w-full rounded-lg border px-3 py-2" placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-      {error ? <p className="text-sm text-red-700">{error}</p> : null}
-      <button className="w-full rounded-lg bg-emerald-800 py-2 text-white">Sign in</button>
-    </form>
+    <div className="grid min-h-screen lg:grid-cols-2">
+      <div className="hidden flex-col justify-between bg-[#0f2419] p-12 text-white lg:flex">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-emerald-200">Lewa Conservancy</p>
+          <h1 className="mt-8 max-w-md text-4xl font-semibold leading-tight tracking-tight">The staff desk for wildlife, guests, and giving.</h1>
+        </div>
+        <ul className="space-y-3 text-sm text-emerald-50/80">
+          <li>Bookings and payments in Kenyan Shillings</li>
+          <li>Wildlife, events, and community programs</li>
+          <li>Staff roles with an audit trail</li>
+        </ul>
+      </div>
+      <div className="flex items-center justify-center bg-[#f6f4ef] px-4 py-12">
+        <form onSubmit={(e) => void onSubmit(e)} className="w-full max-w-md space-y-4 rounded-3xl border border-stone-200/80 bg-white p-8 shadow-sm">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-800 lg:hidden">Lewa Conservancy</p>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Staff sign in</h1>
+            <p className="mt-1 text-sm text-stone-500">Use a staff, administrator, or super administrator account.</p>
+          </div>
+          <Field label="Email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <Field label="Password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          {error ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+          <Button type="submit" className="w-full">Sign in</Button>
+        </form>
+      </div>
+    </div>
   );
 }
 
 function Dashboard() {
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [ready, setReady] = useState(false);
+  const [bookings, setBookings] = useState<Array<Record<string, unknown>>>([]);
+  const [feedback, setFeedback] = useState<Array<Record<string, unknown>>>([]);
+
   useEffect(() => {
     const load = async () => {
-      const tables = ['profiles', 'bookings', 'payments', 'donations', 'wildlife_species', 'events', 'feedback'];
-      const next: Record<string, number> = {};
-      await Promise.all(
-        tables.map(async (table) => {
-          const { count } = await supabase.from(table).select('*', { count: 'exact', head: true });
-          next[table] = count ?? 0;
-        }),
-      );
-      setCounts(next);
+      try {
+        const [countRows, bookingResult, feedbackResult] = await Promise.all([
+          Promise.all(
+            METRICS.map(async (metric) => {
+              const { count } = await supabase.from(metric.key).select('*', { count: 'exact', head: true });
+              return [metric.key, count ?? 0] as const;
+            }),
+          ),
+          supabase.from('bookings').select('id, reference, service_title, amount, currency, status, created_at').order('created_at', { ascending: false }).limit(5),
+          supabase.from('feedback').select('id, subject, category, status, created_at').order('created_at', { ascending: false }).limit(5),
+        ]);
+        setCounts(Object.fromEntries(countRows));
+        setBookings(bookingResult.data ?? []);
+        setFeedback(feedbackResult.data ?? []);
+      } finally {
+        setReady(true);
+      }
     };
     void load();
   }, []);
-  const chart = Object.entries(counts).map(([name, value]) => ({ name, value }));
+
+  const chart = METRICS.map((metric) => ({ name: metric.label, value: counts[metric.key] ?? 0 }));
+
   return (
-    <div>
-      <h2 className="text-2xl font-semibold">Overview</h2>
-      <p className="text-stone-600">Live counts from the shared Supabase project. Amounts are in Kenyan Shillings.</p>
-      <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-        {Object.entries(counts).map(([k, v]) => (
-          <div key={k} className="rounded-xl border border-stone-200 bg-white p-4">
-            <p className="text-xs uppercase text-stone-500">{k.replace('_', ' ')}</p>
-            <p className="text-2xl font-semibold">{v}</p>
-          </div>
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        {METRICS.map((metric) => (
+          <StatCard key={metric.key} label={metric.label} icon={metric.icon} value={ready ? counts[metric.key] ?? 0 : '—'} />
         ))}
       </div>
-      <div className="mt-8 h-72 rounded-xl border border-stone-200 bg-white p-4">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chart}>
-            <XAxis dataKey="name" hide />
-            <YAxis allowDecimals={false} />
-            <Tooltip />
-            <Bar dataKey="value" fill="#065f46" />
-          </BarChart>
-        </ResponsiveContainer>
+      <Card title="Records by area" description="Live counts from the shared Supabase project.">
+        <div className="h-80 px-2 py-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chart} barSize={28} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+              <CartesianGrid stroke="#f0eeea" vertical={false} />
+              <XAxis dataKey="name" interval={0} angle={-28} textAnchor="end" height={68} tick={{ fontSize: 11, fill: '#78716c' }} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#78716c' }} axisLine={false} tickLine={false} width={36} />
+              <Tooltip cursor={{ fill: '#f5f5f4' }} contentStyle={{ borderRadius: 12, borderColor: '#e7e5e4', fontSize: 13 }} />
+              <Bar dataKey="value" fill="#065f46" radius={[8, 8, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card
+          title="Recent bookings"
+          action={<Link to="/bookings" className="text-xs font-semibold text-emerald-800">View all</Link>}
+          bodyClassName="overflow-x-auto"
+        >
+          <table className="data-table">
+            <thead><tr><th>Ref</th><th>Service</th><th>Amount</th><th>Status</th></tr></thead>
+            <tbody>
+              {bookings.length === 0 ? <EmptyRow colSpan={4} label={ready ? 'No bookings yet.' : 'Loading bookings…'} /> : bookings.map((row) => (
+                <tr key={String(row.id)}>
+                  <td className="font-medium">{String(row.reference ?? '')}</td>
+                  <td>{String(row.service_title ?? '')}</td>
+                  <td>{formatCurrency(Number(row.amount), String(row.currency ?? 'KES'))}</td>
+                  <td><Badge value={String(row.status ?? '')} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+        <Card
+          title="Recent feedback"
+          action={<Link to="/feedback" className="text-xs font-semibold text-emerald-800">View all</Link>}
+          bodyClassName="overflow-x-auto"
+        >
+          <table className="data-table">
+            <thead><tr><th>Subject</th><th>Category</th><th>Status</th></tr></thead>
+            <tbody>
+              {feedback.length === 0 ? <EmptyRow colSpan={3} label={ready ? 'No feedback yet.' : 'Loading feedback…'} /> : feedback.map((row) => (
+                <tr key={String(row.id)}>
+                  <td className="font-medium">{String(row.subject ?? '')}</td>
+                  <td className="capitalize">{humanize(String(row.category ?? ''))}</td>
+                  <td><Badge value={String(row.status ?? '')} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
       </div>
     </div>
   );
@@ -194,10 +256,9 @@ function UsersPage() {
   useEffect(() => { void reload(); }, []);
   return (
     <section>
-      <h2 className="mb-4 text-2xl font-semibold">Users</h2>
       {isSuper ? (
-        <form
-          className="mb-6 grid grid-cols-2 gap-3 rounded-xl border bg-white p-4"
+        <FormCard
+          title="Create staff login"
           onSubmit={async (e) => {
             e.preventDefault();
             setFormError(null);
@@ -226,29 +287,29 @@ function UsersPage() {
             void reload();
           }}
         >
-          <h3 className="col-span-2 font-semibold">Create staff login</h3>
-          <input className="rounded border px-3 py-2" placeholder="Full name" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} required />
-          <input className="rounded border px-3 py-2" placeholder="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-          <input className="rounded border px-3 py-2" placeholder="Temporary password" type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
-          <select className="rounded border px-3 py-2" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+          <Field label="Full name" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} required />
+          <Field label="Email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+          <Field label="Temporary password" type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+          <SelectField label="Role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
             <option value="staff">staff</option>
             <option value="administrator">administrator</option>
-          </select>
-          {formError ? <p className="col-span-2 text-sm text-red-700">{formError}</p> : null}
-          <button className="w-fit rounded bg-emerald-800 px-4 py-2 text-white" disabled={saving}>
-            {saving ? 'Creating…' : 'Create account'}
-          </button>
-        </form>
+          </SelectField>
+          {formError ? <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 sm:col-span-2">{formError}</p> : null}
+          <div className="sm:col-span-2">
+            <Button type="submit" disabled={saving}>{saving ? 'Creating…' : 'Create account'}</Button>
+          </div>
+        </FormCard>
       ) : null}
-      <table>
+      <DataTable>
         <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th></tr></thead>
         <tbody>
-          {rows.map((r) => (
+          {rows.length === 0 ? <EmptyRow colSpan={4} label="No users yet." /> : rows.map((r) => (
             <tr key={r.id}>
-              <td>{r.full_name}</td>
+              <td className="font-medium">{r.full_name}</td>
               <td>{r.email}</td>
               <td>
-                <select
+                <SelectField
+                  compact
                   disabled={!isSuper}
                   value={r.role}
                   onChange={async (e) => {
@@ -256,28 +317,25 @@ function UsersPage() {
                     void reload();
                   }}
                 >
-                  {['visitor', 'donor', 'researcher', 'community_member', 'staff', 'administrator', 'super_admin'].map((role) => (
-                    <option key={role} value={role}>{role}</option>
+                  {USER_ROLES.map((role) => (
+                    <option key={role} value={role}>{humanize(role)}</option>
                   ))}
-                </select>
+                </SelectField>
               </td>
               <td>
-                <select
+                <StatusSelect
                   value={r.status}
-                  onChange={async (e) => {
-                    await supabase.from('profiles').update({ status: e.target.value }).eq('id', r.id);
+                  options={['active', 'suspended', 'archived']}
+                  onChange={async (status) => {
+                    await supabase.from('profiles').update({ status }).eq('id', r.id);
                     void reload();
                   }}
-                >
-                  <option value="active">active</option>
-                  <option value="suspended">suspended</option>
-                  <option value="archived">archived</option>
-                </select>
+                />
               </td>
             </tr>
           ))}
         </tbody>
-      </table>
+      </DataTable>
     </section>
   );
 }
@@ -292,9 +350,7 @@ function WildlifePage() {
   useEffect(() => { void reload(); }, []);
   return (
     <section>
-      <h2 className="mb-4 text-2xl font-semibold">Wildlife</h2>
-      <form
-        className="mb-6 grid grid-cols-2 gap-3 rounded-xl border bg-white p-4"
+      <FormCard
         onSubmit={async (e) => {
           e.preventDefault();
           await supabase.from('wildlife_species').upsert({
@@ -306,31 +362,33 @@ function WildlifePage() {
           void reload();
         }}
       >
-        <input className="rounded border px-3 py-2" placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-        <input className="rounded border px-3 py-2" placeholder="Scientific name" value={form.scientific_name} onChange={(e) => setForm({ ...form, scientific_name: e.target.value })} />
-        <input className="rounded border px-3 py-2" placeholder="Category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
-        <input className="rounded border px-3 py-2" placeholder="Conservation status" value={form.conservation_status} onChange={(e) => setForm({ ...form, conservation_status: e.target.value })} />
-        <input className="col-span-2 rounded border px-3 py-2" placeholder="Image URL" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
-        <textarea className="col-span-2 rounded border px-3 py-2" placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.featured} onChange={(e) => setForm({ ...form, featured: e.target.checked })} /> Featured</label>
-        <button className="rounded bg-emerald-800 px-4 py-2 text-white">Save species</button>
-      </form>
-      <table>
+        <Field label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+        <Field label="Scientific name" value={form.scientific_name} onChange={(e) => setForm({ ...form, scientific_name: e.target.value })} />
+        <Field label="Category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+        <Field label="Conservation status" value={form.conservation_status} onChange={(e) => setForm({ ...form, conservation_status: e.target.value })} />
+        <Field className="sm:col-span-2" label="Image URL" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
+        <TextArea className="sm:col-span-2" label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+        <CheckField label="Featured" checked={form.featured} onChange={(e) => setForm({ ...form, featured: e.target.checked })} />
+        <div className="flex items-end">
+          <Button type="submit">Save species</Button>
+        </div>
+      </FormCard>
+      <DataTable>
         <thead><tr><th>Name</th><th>Category</th><th>Status</th><th>Featured</th><th /></tr></thead>
         <tbody>
-          {rows.map((r) => (
+          {rows.length === 0 ? <EmptyRow colSpan={5} label="No species yet." /> : rows.map((r) => (
             <tr key={String(r.id)}>
-              <td>{String(r.name)}</td>
+              <td className="font-medium">{String(r.name)}</td>
               <td>{String(r.category)}</td>
-              <td>{String(r.conservation_status ?? '')}</td>
-              <td>{r.featured ? 'Yes' : 'No'}</td>
+              <td><Badge value={String(r.conservation_status ?? '')} /></td>
+              <td><Badge value={r.featured ? 'yes' : 'no'} /></td>
               <td>
-                <button className="text-red-700" onClick={async () => { await supabase.from('wildlife_species').delete().eq('id', r.id); void reload(); }}>Delete</button>
+                <Button type="button" tone="danger" className="px-3 py-1.5" onClick={async () => { await supabase.from('wildlife_species').delete().eq('id', r.id); void reload(); }}>Delete</Button>
               </td>
             </tr>
           ))}
         </tbody>
-      </table>
+      </DataTable>
     </section>
   );
 }
@@ -345,9 +403,7 @@ function TourismPage() {
   useEffect(() => { void reload(); }, []);
   return (
     <section>
-      <h2 className="mb-4 text-2xl font-semibold">Tourism & accommodation</h2>
-      <form
-        className="mb-6 grid grid-cols-2 gap-3 rounded-xl border bg-white p-4"
+      <FormCard
         onSubmit={async (e) => {
           e.preventDefault();
           await supabase.from('tourism_services').upsert({
@@ -366,32 +422,34 @@ function TourismPage() {
           void reload();
         }}
       >
-        <input className="rounded border px-3 py-2" placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-        <input className="rounded border px-3 py-2" placeholder="Category / service type" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
-        <input className="rounded border px-3 py-2" placeholder="Price KSh" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
-        <input className="rounded border px-3 py-2" placeholder="Duration" value={form.duration_label} onChange={(e) => setForm({ ...form, duration_label: e.target.value })} />
-        <input className="rounded border px-3 py-2" placeholder="Capacity" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
-        <select className="rounded border px-3 py-2" value={form.pricing_unit} onChange={(e) => setForm({ ...form, pricing_unit: e.target.value })}>
+        <Field label="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+        <Field label="Category / service type" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+        <Field label="Price (KSh)" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
+        <Field label="Duration" value={form.duration_label} onChange={(e) => setForm({ ...form, duration_label: e.target.value })} />
+        <Field label="Capacity" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
+        <SelectField label="Pricing" value={form.pricing_unit} onChange={(e) => setForm({ ...form, pricing_unit: e.target.value })}>
           <option value="per_guest">per guest</option>
           <option value="per_booking">per booking (accommodation)</option>
-        </select>
-        <textarea className="col-span-2 rounded border px-3 py-2" placeholder="Summary" value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
-        <button className="rounded bg-emerald-800 px-4 py-2 text-white">Save service</button>
-      </form>
-      <table>
+        </SelectField>
+        <TextArea className="sm:col-span-2" label="Summary" value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
+        <div className="sm:col-span-2">
+          <Button type="submit">Save service</Button>
+        </div>
+      </FormCard>
+      <DataTable>
         <thead><tr><th>Title</th><th>Type</th><th>Price</th><th>Capacity</th><th /></tr></thead>
         <tbody>
-          {rows.map((r) => (
+          {rows.length === 0 ? <EmptyRow colSpan={5} label="No services yet." /> : rows.map((r) => (
             <tr key={String(r.id)}>
-              <td>{String(r.title)}</td>
+              <td className="font-medium">{String(r.title)}</td>
               <td>{String(r.category)}</td>
               <td>{formatCurrency(Number(r.price), String(r.currency ?? 'KES'))}</td>
               <td>{String(r.capacity)}</td>
-              <td><button className="text-red-700" onClick={async () => { await supabase.from('tourism_services').delete().eq('id', r.id); void reload(); }}>Delete</button></td>
+              <td><Button type="button" tone="danger" className="px-3 py-1.5" onClick={async () => { await supabase.from('tourism_services').delete().eq('id', r.id); void reload(); }}>Delete</Button></td>
             </tr>
           ))}
         </tbody>
-      </table>
+      </DataTable>
     </section>
   );
 }
@@ -404,28 +462,27 @@ function BookingsPage() {
   };
   useEffect(() => { void reload(); }, []);
   return (
-    <section>
-      <h2 className="mb-4 text-2xl font-semibold">Bookings</h2>
-      <table>
-        <thead><tr><th>Ref</th><th>Service</th><th>Date</th><th>Guests</th><th>Amount</th><th>Status</th></tr></thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={String(r.id)}>
-              <td>{String(r.reference)}</td>
-              <td>{String(r.service_title)}</td>
-              <td>{formatDate(String(r.booking_date))}</td>
-              <td>{String(r.guests)}</td>
-              <td>{formatCurrency(Number(r.amount), String(r.currency))}</td>
-              <td>
-                <select value={String(r.status)} onChange={async (e) => { await supabase.from('bookings').update({ status: e.target.value }).eq('id', r.id); void reload(); }}>
-                  {['pending_payment', 'payment_verification', 'confirmed', 'cancelled', 'completed', 'refunded'].map((s) => <option key={s}>{s}</option>)}
-                </select>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </section>
+    <DataTable>
+      <thead><tr><th>Ref</th><th>Service</th><th>Date</th><th>Guests</th><th>Amount</th><th>Status</th></tr></thead>
+      <tbody>
+        {rows.length === 0 ? <EmptyRow colSpan={6} label="No bookings yet." /> : rows.map((r) => (
+          <tr key={String(r.id)}>
+            <td className="font-medium">{String(r.reference)}</td>
+            <td>{String(r.service_title)}</td>
+            <td>{formatDate(String(r.booking_date))}</td>
+            <td>{String(r.guests)}</td>
+            <td>{formatCurrency(Number(r.amount), String(r.currency))}</td>
+            <td>
+              <StatusSelect
+                value={String(r.status)}
+                options={BOOKING_STATUSES}
+                onChange={async (status) => { await supabase.from('bookings').update({ status }).eq('id', r.id); void reload(); }}
+              />
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </DataTable>
   );
 }
 
@@ -439,8 +496,7 @@ function EventsPage() {
   useEffect(() => { void reload(); }, []);
   return (
     <section>
-      <h2 className="mb-4 text-2xl font-semibold">Events</h2>
-      <form className="mb-6 grid grid-cols-2 gap-3 rounded-xl border bg-white p-4" onSubmit={async (e) => {
+      <FormCard onSubmit={async (e) => {
         e.preventDefault();
         await supabase.from('events').insert({
           id: form.title.toLowerCase().replace(/\s+/g, '-'),
@@ -452,25 +508,27 @@ function EventsPage() {
         });
         void reload();
       }}>
-        <input className="rounded border px-3 py-2" placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-        <input className="rounded border px-3 py-2" placeholder="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-        <input className="rounded border px-3 py-2" type="datetime-local" value={form.start_at} onChange={(e) => setForm({ ...form, start_at: e.target.value })} required />
-        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.registration_required} onChange={(e) => setForm({ ...form, registration_required: e.target.checked })} /> Registration required</label>
-        <button className="rounded bg-emerald-800 px-4 py-2 text-white">Create event</button>
-      </form>
-      <table>
+        <Field label="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+        <Field label="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+        <Field label="Starts" type="datetime-local" value={form.start_at} onChange={(e) => setForm({ ...form, start_at: e.target.value })} required />
+        <CheckField label="Registration required" checked={form.registration_required} onChange={(e) => setForm({ ...form, registration_required: e.target.checked })} />
+        <div className="sm:col-span-2">
+          <Button type="submit">Create event</Button>
+        </div>
+      </FormCard>
+      <DataTable>
         <thead><tr><th>Title</th><th>When</th><th>Location</th><th /></tr></thead>
         <tbody>
-          {rows.map((r) => (
+          {rows.length === 0 ? <EmptyRow colSpan={4} label="No events yet." /> : rows.map((r) => (
             <tr key={String(r.id)}>
-              <td>{String(r.title)}</td>
+              <td className="font-medium">{String(r.title)}</td>
               <td>{formatDate(String(r.start_at))}</td>
               <td>{String(r.location ?? '')}</td>
-              <td><button className="text-red-700" onClick={async () => { await supabase.from('events').delete().eq('id', r.id); void reload(); }}>Delete</button></td>
+              <td><Button type="button" tone="danger" className="px-3 py-1.5" onClick={async () => { await supabase.from('events').delete().eq('id', r.id); void reload(); }}>Delete</Button></td>
             </tr>
           ))}
         </tbody>
-      </table>
+      </DataTable>
     </section>
   );
 }
@@ -485,30 +543,35 @@ function SimpleContent({ table, title, extra = [] }: { table: string; title: str
   useEffect(() => { void reload(); }, [table]);
   return (
     <section>
-      <h2 className="mb-4 text-2xl font-semibold">{title}</h2>
-      <form className="mb-6 grid gap-3 rounded-xl border bg-white p-4" onSubmit={async (e) => {
-        e.preventDefault();
-        await supabase.from(table).insert({ id: form.title.toLowerCase().replace(/\s+/g, '-'), title: form.title, summary: form.summary, status: 'published' });
-        setForm({ title: '', summary: '' });
-        void reload();
-      }}>
-        <input className="rounded border px-3 py-2" placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-        <textarea className="rounded border px-3 py-2" placeholder="Summary" value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
-        <button className="w-fit rounded bg-emerald-800 px-4 py-2 text-white">Add</button>
-      </form>
-      <table>
-        <thead><tr><th>Title</th><th>Summary</th>{extra.map((c) => <th key={c}>{c}</th>)}<th /></tr></thead>
+      <FormCard
+        columns={1}
+        title={`Add ${title.toLowerCase()}`}
+        onSubmit={async (e) => {
+          e.preventDefault();
+          await supabase.from(table).insert({ id: form.title.toLowerCase().replace(/\s+/g, '-'), title: form.title, summary: form.summary, status: 'published' });
+          setForm({ title: '', summary: '' });
+          void reload();
+        }}
+      >
+        <Field label="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+        <TextArea label="Summary" value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
+        <div>
+          <Button type="submit">Add</Button>
+        </div>
+      </FormCard>
+      <DataTable>
+        <thead><tr><th>Title</th><th>Summary</th>{extra.map((c) => <th key={c} className="capitalize">{humanize(c)}</th>)}<th /></tr></thead>
         <tbody>
-          {rows.map((r) => (
+          {rows.length === 0 ? <EmptyRow colSpan={3 + extra.length} label={`No ${title.toLowerCase()} yet.`} /> : rows.map((r) => (
             <tr key={String(r.id)}>
-              <td>{String(r.title)}</td>
+              <td className="font-medium">{String(r.title)}</td>
               <td>{String(r.summary ?? '')}</td>
               {extra.map((c) => <td key={c}>{String(r[c] ?? '')}</td>)}
-              <td><button className="text-red-700" onClick={async () => { await supabase.from(table).delete().eq('id', r.id); void reload(); }}>Delete</button></td>
+              <td><Button type="button" tone="danger" className="px-3 py-1.5" onClick={async () => { await supabase.from(table).delete().eq('id', r.id); void reload(); }}>Delete</Button></td>
             </tr>
           ))}
         </tbody>
-      </table>
+      </DataTable>
     </section>
   );
 }
@@ -523,36 +586,36 @@ function DonationsPage() {
   return (
     <section className="space-y-8">
       <div>
-        <h2 className="mb-4 text-2xl font-semibold">Campaigns</h2>
-        <table>
+        <SectionHeading title="Campaigns" />
+        <DataTable>
           <thead><tr><th>Title</th><th>Raised</th><th>Goal</th><th>Active</th></tr></thead>
           <tbody>
-            {campaigns.map((c) => (
+            {campaigns.length === 0 ? <EmptyRow colSpan={4} label="No campaigns yet." /> : campaigns.map((c) => (
               <tr key={String(c.id)}>
-                <td>{String(c.title)}</td>
+                <td className="font-medium">{String(c.title)}</td>
                 <td>{formatCurrency(Number(c.amount_raised), String(c.currency))}</td>
                 <td>{formatCurrency(Number(c.goal_amount), String(c.currency))}</td>
-                <td>{c.active ? 'Yes' : 'No'}</td>
+                <td><Badge value={c.active ? 'yes' : 'no'} /></td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </DataTable>
       </div>
       <div>
-        <h3 className="mb-3 text-xl font-semibold">Individual gifts</h3>
-        <table>
+        <SectionHeading title="Individual gifts" />
+        <DataTable>
           <thead><tr><th>Amount</th><th>Status</th><th>Donor</th><th>When</th></tr></thead>
           <tbody>
-            {gifts.map((g) => (
+            {gifts.length === 0 ? <EmptyRow colSpan={4} label="No gifts yet." /> : gifts.map((g) => (
               <tr key={String(g.id)}>
-                <td>{formatCurrency(Number(g.amount), String(g.currency))}</td>
-                <td>{String(g.status)}</td>
+                <td className="font-medium">{formatCurrency(Number(g.amount), String(g.currency))}</td>
+                <td><Badge value={String(g.status)} /></td>
                 <td>{String(g.donor_name ?? g.donor_email ?? '—')}</td>
                 <td>{formatDate(String(g.created_at))}</td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </DataTable>
       </div>
     </section>
   );
@@ -564,23 +627,20 @@ function PaymentsPage() {
     void supabase.from('payments').select('*').order('created_at', { ascending: false }).then(({ data }) => setRows(data ?? []));
   }, []);
   return (
-    <section>
-      <h2 className="mb-4 text-2xl font-semibold">Payments</h2>
-      <table>
-        <thead><tr><th>Reference</th><th>Amount</th><th>Status</th><th>Purpose</th><th>When</th></tr></thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={String(r.id)}>
-              <td>{String(r.reference)}</td>
-              <td>{formatCurrency(Number(r.amount), String(r.currency))}</td>
-              <td>{String(r.status)}</td>
-              <td>{String(r.purpose ?? '')}</td>
-              <td>{formatDate(String(r.created_at))}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </section>
+    <DataTable>
+      <thead><tr><th>Reference</th><th>Amount</th><th>Status</th><th>Purpose</th><th>When</th></tr></thead>
+      <tbody>
+        {rows.length === 0 ? <EmptyRow colSpan={5} label="No payments yet." /> : rows.map((r) => (
+          <tr key={String(r.id)}>
+            <td className="font-medium">{String(r.reference)}</td>
+            <td>{formatCurrency(Number(r.amount), String(r.currency))}</td>
+            <td><Badge value={String(r.status)} /></td>
+            <td className="capitalize">{humanize(String(r.purpose ?? ''))}</td>
+            <td>{formatDate(String(r.created_at))}</td>
+          </tr>
+        ))}
+      </tbody>
+    </DataTable>
   );
 }
 
@@ -595,31 +655,36 @@ function NotificationsPage() {
   useEffect(() => { void reload(); }, []);
   return (
     <section>
-      <h2 className="mb-4 text-2xl font-semibold">Notifications</h2>
-      <form className="mb-6 space-y-3 rounded-xl border bg-white p-4" onSubmit={async (e) => {
-        e.preventDefault();
-        const { error } = await supabase.functions.invoke('admin-notify', { body: { title, message } });
-        if (error) alert(error.message);
-        setTitle('');
-        setMessage('');
-        void reload();
-      }}>
-        <input className="w-full rounded border px-3 py-2" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-        <textarea className="w-full rounded border px-3 py-2" placeholder="Message" value={message} onChange={(e) => setMessage(e.target.value)} required />
-        <button className="rounded bg-emerald-800 px-4 py-2 text-white">Broadcast</button>
-      </form>
-      <table>
+      <FormCard
+        columns={1}
+        title="Broadcast"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const { error } = await supabase.functions.invoke('admin-notify', { body: { title, message } });
+          if (error) alert(error.message);
+          setTitle('');
+          setMessage('');
+          void reload();
+        }}
+      >
+        <Field label="Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
+        <TextArea label="Message" value={message} onChange={(e) => setMessage(e.target.value)} required />
+        <div>
+          <Button type="submit">Broadcast</Button>
+        </div>
+      </FormCard>
+      <DataTable>
         <thead><tr><th>Title</th><th>Audience</th><th>When</th></tr></thead>
         <tbody>
-          {rows.map((r) => (
+          {rows.length === 0 ? <EmptyRow colSpan={3} label="No notifications yet." /> : rows.map((r) => (
             <tr key={String(r.id)}>
-              <td>{String(r.title)}</td>
+              <td className="font-medium">{String(r.title)}</td>
               <td>{r.broadcast ? 'Everyone' : 'User'}</td>
               <td>{formatDate(String(r.created_at))}</td>
             </tr>
           ))}
         </tbody>
-      </table>
+      </DataTable>
     </section>
   );
 }
@@ -632,38 +697,41 @@ function FeedbackPage() {
   };
   useEffect(() => { void reload(); }, []);
   return (
-    <section>
-      <h2 className="mb-4 text-2xl font-semibold">Feedback</h2>
-      <table>
-        <thead><tr><th>Subject</th><th>Category</th><th>Message</th><th>Status</th><th>Response</th></tr></thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={String(r.id)}>
-              <td>{String(r.subject)}</td>
-              <td>{String(r.category)}</td>
-              <td className="max-w-xs">{String(r.message)}</td>
-              <td>
-                <select value={String(r.status)} onChange={async (e) => { await supabase.from('feedback').update({ status: e.target.value }).eq('id', r.id); void reload(); }}>
-                  <option>open</option>
-                  <option>in_progress</option>
-                  <option>resolved</option>
-                  <option>closed</option>
-                </select>
-              </td>
-              <td>
-                <button className="text-emerald-800" onClick={async () => {
+    <DataTable>
+      <thead><tr><th>Subject</th><th>Category</th><th>Message</th><th>Status</th><th>Response</th></tr></thead>
+      <tbody>
+        {rows.length === 0 ? <EmptyRow colSpan={5} label="No feedback yet." /> : rows.map((r) => (
+          <tr key={String(r.id)}>
+            <td className="font-medium">{String(r.subject)}</td>
+            <td className="capitalize">{humanize(String(r.category))}</td>
+            <td className="max-w-xs whitespace-normal text-stone-600">{String(r.message)}</td>
+            <td>
+              <StatusSelect
+                value={String(r.status)}
+                options={FEEDBACK_STATUSES}
+                onChange={async (status) => { await supabase.from('feedback').update({ status }).eq('id', r.id); void reload(); }}
+              />
+            </td>
+            <td>
+              <Button
+                type="button"
+                tone="ghost"
+                className="px-3 py-1.5 text-emerald-800"
+                onClick={async () => {
                   const admin_response = prompt('Response', String(r.admin_response ?? ''));
                   if (admin_response != null) {
                     await supabase.from('feedback').update({ admin_response, responded_at: new Date().toISOString() }).eq('id', r.id);
                     void reload();
                   }
-                }}>Reply</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </section>
+                }}
+              >
+                Reply
+              </Button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </DataTable>
   );
 }
 
@@ -675,23 +743,11 @@ function ReportsPage() {
   const success = payments.filter((p) => p.status === 'success');
   const total = success.reduce((sum, p) => sum + Number(p.amount), 0);
   return (
-    <section>
-      <h2 className="mb-4 text-2xl font-semibold">Reports</h2>
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-xl border bg-white p-4">
-          <p className="text-sm text-stone-500">Verified payments</p>
-          <p className="text-2xl font-semibold">{formatCurrency(total)}</p>
-        </div>
-        <div className="rounded-xl border bg-white p-4">
-          <p className="text-sm text-stone-500">Successful charges</p>
-          <p className="text-2xl font-semibold">{success.length}</p>
-        </div>
-        <div className="rounded-xl border bg-white p-4">
-          <p className="text-sm text-stone-500">All payment rows</p>
-          <p className="text-2xl font-semibold">{payments.length}</p>
-        </div>
-      </div>
-    </section>
+    <div className="grid gap-4 md:grid-cols-3">
+      <StatCard label="Verified payments" value={formatCurrency(total)} icon="card" />
+      <StatCard label="Successful charges" value={success.length} icon="chart" />
+      <StatCard label="All payment rows" value={payments.length} icon="list" />
+    </div>
   );
 }
 
@@ -712,23 +768,39 @@ function ContentPage() {
   useEffect(() => { void reload(); }, []);
   return (
     <section className="space-y-8">
-      <h2 className="text-2xl font-semibold">Content</h2>
       <div>
-        <h3 className="mb-2 font-semibold">FAQs</h3>
-        <table><thead><tr><th>Q</th><th>A</th></tr></thead><tbody>{faqs.map((f) => <tr key={String(f.id)}><td>{String(f.question)}</td><td>{String(f.answer)}</td></tr>)}</tbody></table>
+        <SectionHeading title="FAQs" />
+        <DataTable>
+          <thead><tr><th>Question</th><th>Answer</th></tr></thead>
+          <tbody>
+            {faqs.length === 0 ? <EmptyRow colSpan={2} label="No FAQs yet." /> : faqs.map((f) => (
+              <tr key={String(f.id)}><td className="font-medium">{String(f.question)}</td><td className="whitespace-normal text-stone-600">{String(f.answer)}</td></tr>
+            ))}
+          </tbody>
+        </DataTable>
       </div>
       <div>
-        <h3 className="mb-2 font-semibold">Announcements</h3>
-        <table><thead><tr><th>Title</th><th>Tone</th></tr></thead><tbody>{ann.map((a) => <tr key={String(a.id)}><td>{String(a.title)}</td><td>{String(a.tone)}</td></tr>)}</tbody></table>
+        <SectionHeading title="Announcements" />
+        <DataTable>
+          <thead><tr><th>Title</th><th>Tone</th></tr></thead>
+          <tbody>
+            {ann.length === 0 ? <EmptyRow colSpan={2} label="No announcements yet." /> : ann.map((a) => (
+              <tr key={String(a.id)}><td className="font-medium">{String(a.title)}</td><td><Badge value={String(a.tone)} /></td></tr>
+            ))}
+          </tbody>
+        </DataTable>
       </div>
       <div>
-        <h3 className="mb-2 font-semibold">About</h3>
-        {about.map((s) => (
-          <div key={String(s.key)} className="mb-3 rounded-xl border bg-white p-4">
-            <p className="font-semibold">{String(s.title)}</p>
-            <textarea className="mt-2 w-full rounded border p-2" defaultValue={String(s.body)} onBlur={async (e) => { await supabase.from('about_content').update({ body: e.target.value }).eq('key', s.key); }} />
-          </div>
-        ))}
+        <SectionHeading title="About" />
+        <div className="space-y-3">
+          {about.length === 0 ? (
+            <Card bodyClassName="px-5 py-10 text-center text-sm text-stone-500">No about sections yet.</Card>
+          ) : about.map((s) => (
+            <Card key={String(s.key)} title={String(s.title)} bodyClassName="p-5">
+              <TextArea defaultValue={String(s.body)} onBlur={async (e) => { await supabase.from('about_content').update({ body: e.target.value }).eq('key', s.key); }} />
+            </Card>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -742,14 +814,19 @@ function SettingsPage() {
     });
   }, []);
   return (
-    <section>
-      <h2 className="mb-4 text-2xl font-semibold">Settings</h2>
-      <textarea className="h-64 w-full rounded-xl border p-4 font-mono text-sm" value={value} onChange={(e) => setValue(e.target.value)} />
-      <button className="mt-3 rounded bg-emerald-800 px-4 py-2 text-white" onClick={async () => {
-        await supabase.from('site_settings').upsert({ key: 'general', value: JSON.parse(value) });
-        alert('Saved');
-      }}>Save</button>
-    </section>
+    <Card title="General" description="Saved to site settings under the general key." bodyClassName="p-5">
+      <TextArea areaClassName="min-h-64 font-mono text-xs font-medium" value={value} onChange={(e) => setValue(e.target.value)} />
+      <Button
+        type="button"
+        className="mt-3"
+        onClick={async () => {
+          await supabase.from('site_settings').upsert({ key: 'general', value: JSON.parse(value) });
+          alert('Saved');
+        }}
+      >
+        Save
+      </Button>
+    </Card>
   );
 }
 
@@ -759,21 +836,18 @@ function AuditPage() {
     void supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(100).then(({ data }) => setRows(data ?? []));
   }, []);
   return (
-    <section>
-      <h2 className="mb-4 text-2xl font-semibold">Audit logs</h2>
-      <table>
-        <thead><tr><th>When</th><th>Action</th><th>Entity</th><th>Actor</th></tr></thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={String(r.id)}>
-              <td>{formatDate(String(r.created_at))}</td>
-              <td>{String(r.action)}</td>
-              <td>{String(r.entity_type)} {String(r.entity_id ?? '')}</td>
-              <td>{String(r.actor_user_id ?? 'system')}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </section>
+    <DataTable>
+      <thead><tr><th>When</th><th>Action</th><th>Entity</th><th>Actor</th></tr></thead>
+      <tbody>
+        {rows.length === 0 ? <EmptyRow colSpan={4} label="No audit events yet." /> : rows.map((r) => (
+          <tr key={String(r.id)}>
+            <td>{formatDate(String(r.created_at))}</td>
+            <td><Badge value={String(r.action)} /></td>
+            <td>{String(r.entity_type)} {String(r.entity_id ?? '')}</td>
+            <td className="font-mono text-xs">{String(r.actor_user_id ?? 'system')}</td>
+          </tr>
+        ))}
+      </tbody>
+    </DataTable>
   );
 }
