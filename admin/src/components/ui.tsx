@@ -28,7 +28,7 @@ export function PageHeader({ title, description, aside }: { title: string; descr
     <div className="flex min-w-0 flex-1 items-center justify-between gap-4">
       <div className="min-w-0">
         <h1 className="truncate text-lg font-semibold tracking-tight text-stone-900 md:text-xl">{title}</h1>
-        {description ? <p className="truncate text-sm text-stone-500">{description}</p> : null}
+        {description ? <p className="line-clamp-2 text-sm leading-5 text-stone-500">{description}</p> : null}
       </div>
       {aside}
     </div>

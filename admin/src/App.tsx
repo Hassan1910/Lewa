@@ -188,14 +188,14 @@ function Dashboard() {
         ))}
       </div>
       <Card title="Records by area" description="Live counts from the shared Supabase project.">
-        <div className="h-80 px-2 py-4">
+        <div className="h-96 px-2 py-4">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chart} barSize={28} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
-              <CartesianGrid stroke="#f0eeea" vertical={false} />
-              <XAxis dataKey="name" interval={0} angle={-28} textAnchor="end" height={68} tick={{ fontSize: 11, fill: '#78716c' }} axisLine={false} tickLine={false} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#78716c' }} axisLine={false} tickLine={false} width={36} />
+            <BarChart data={chart} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
+              <CartesianGrid stroke="#f0eeea" horizontal={false} />
+              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 12, fill: '#78716c' }} axisLine={false} tickLine={false} />
+              <YAxis type="category" dataKey="name" width={92} tick={{ fontSize: 12, fill: '#57534e' }} axisLine={false} tickLine={false} />
               <Tooltip cursor={{ fill: '#f5f5f4' }} contentStyle={{ borderRadius: 12, borderColor: '#e7e5e4', fontSize: 13 }} />
-              <Bar dataKey="value" fill="#065f46" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="value" fill="#065f46" radius={[0, 8, 8, 0]} barSize={16} />
             </BarChart>
           </ResponsiveContainer>
         </div>

@@ -41,16 +41,16 @@ function initials(name?: string | null) {
   return parts.map((part) => part[0]?.toUpperCase() ?? '').join('') || 'L';
 }
 
-function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
+function Sidebar({ onClose }: { onClose?: () => void }) {
   const { profile, isAdmin, signOut } = useAuth();
   const { pathname } = useLocation();
   const items = NAV.filter((item) => item.min === 'staff' || isAdmin);
 
   return (
-    <div className="flex h-full flex-col bg-[#0f2419] text-white">
-      <div className="px-5 pb-4 pt-6">
+    <div className="flex h-full min-h-0 w-full flex-col bg-[#0f2419] text-white">
+      <div className="flex items-start justify-between gap-2 px-5 pb-4 pt-6">
         <div className="flex items-center gap-3">
-          <span className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-400/15 text-emerald-200">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-400/15 text-emerald-200">
             <Icon name="leaf" className="h-5 w-5" />
           </span>
           <div>
@@ -58,8 +58,18 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <p className="text-base font-semibold leading-tight">Conservancy</p>
           </div>
         </div>
+        {onClose ? (
+          <button
+            type="button"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-emerald-50/80 hover:bg-white/10"
+            aria-label="Close menu"
+            onClick={onClose}
+          >
+            <Icon name="close" />
+          </button>
+        ) : null}
       </div>
-      <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-6">
+      <nav className="min-h-0 flex-1 space-y-5 overflow-y-auto px-3 pb-6">
         {GROUPS.map((group) => {
           const groupItems = items.filter((item) => item.group === group);
           if (groupItems.length === 0) return null;
@@ -74,7 +84,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                       key={item.to}
                       to={item.to}
                       aria-current={active ? 'page' : undefined}
-                      onClick={onNavigate}
+                      onClick={onClose}
                       className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition ${
                         active ? 'bg-white/15 text-white shadow-sm ring-1 ring-white/15' : 'text-emerald-50/75 hover:bg-white/10 hover:text-white'
                       }`}
@@ -126,22 +136,14 @@ export function Shell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-[#f6f4ef] text-stone-900">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 lg:block">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 overflow-hidden lg:flex">
         <Sidebar />
       </aside>
       {open ? (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <button type="button" className="absolute inset-0 bg-stone-950/50" aria-label="Close menu" onClick={() => setOpen(false)} />
-          <aside className="relative flex h-full w-72 max-w-[85vw] flex-col shadow-2xl">
-            <button
-              type="button"
-              className="absolute right-3 top-4 z-10 grid h-8 w-8 place-items-center rounded-lg text-emerald-50/80 hover:bg-white/10"
-              aria-label="Close menu"
-              onClick={() => setOpen(false)}
-            >
-              <Icon name="close" />
-            </button>
-            <Sidebar onNavigate={() => setOpen(false)} />
+          <button type="button" className="absolute inset-0 bg-stone-950/50" aria-label="Dismiss navigation" onClick={() => setOpen(false)} />
+          <aside className="relative flex h-full w-72 max-w-[85vw] flex-col overflow-hidden shadow-2xl">
+            <Sidebar onClose={() => setOpen(false)} />
           </aside>
         </div>
       ) : null}
