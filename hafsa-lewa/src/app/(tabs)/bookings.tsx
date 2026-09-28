@@ -102,7 +102,7 @@ export default function BookingsTab() {
                 reference={b.reference}
                 amount={b.amount}
                 currency={b.currency}
-                onPress={() => router.push(`/tourism/${b.serviceId}`)}
+                onPress={() => router.push(`/bookings/${b.id}`)}
               />
             ))}
             {tab === 'upcoming' ? (

@@ -22,7 +22,7 @@ export type BookingCardProps = {
   onPress?: () => void;
 };
 
-const STATUS_LABEL: Record<BookingStatus, string> = {
+export const BOOKING_STATUS_LABEL: Record<BookingStatus, string> = {
   confirmed: 'Confirmed',
   pending_payment: 'Awaiting payment',
   payment_verification: 'Verifying payment',
@@ -33,7 +33,7 @@ const STATUS_LABEL: Record<BookingStatus, string> = {
   draft: 'Draft',
 };
 
-const STATUS_TONE: Record<BookingStatus, StatusBadgeTone> = {
+export const BOOKING_STATUS_TONE: Record<BookingStatus, StatusBadgeTone> = {
   confirmed: 'success',
   pending_payment: 'warning',
   payment_verification: 'warning',
@@ -68,7 +68,7 @@ export function BookingCard({
         <ImageWithFallback uri={imageUrl} style={styles.image} fallbackIcon="binoculars.fill" />
       ) : null}
       <View style={styles.body}>
-        <StatusBadge label={STATUS_LABEL[status]} tone={STATUS_TONE[status]} />
+        <StatusBadge label={BOOKING_STATUS_LABEL[status]} tone={BOOKING_STATUS_TONE[status]} />
         <ThemedText type="h3" numberOfLines={2}>
           {serviceTitle}
         </ThemedText>
