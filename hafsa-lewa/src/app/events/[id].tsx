@@ -5,7 +5,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { Button, EmptyState, ErrorState, Icon, ImageWithFallback, LoadingState, SectionHeader, StatusBadge } from '@/components/ui';
+import { Button, EmptyState, ErrorState, Icon, ImageWithFallback, LoadingState, SectionHeader, StatusBadge, StickyActionBar, stickyActionBarScrollPadding, useStickyActionBarInset } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
 import { getEventById, getMyEventRegistration, registerForEvent } from '@/services/events';
@@ -14,6 +14,7 @@ import { formatDate } from '@/utils/format';
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session, profile } = useAuth();
+  const bottomInset = useStickyActionBarInset();
   const queryClient = useQueryClient();
   const { data: event, isLoading, error } = useQuery({
     queryKey: ['events', id],
@@ -75,7 +76,10 @@ export default function EventDetailScreen() {
   return (
     <View style={styles.root}>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: stickyActionBarScrollPadding(bottomInset) }}
+      >
         <View style={styles.hero}>
           <ImageWithFallback uri={event.imageUrl} style={StyleSheet.absoluteFill} fallbackIcon="calendar" />
           <LinearGradient
@@ -123,7 +127,7 @@ export default function EventDetailScreen() {
         </View>
       </ScrollView>
 
-      <View style={[styles.footer, { borderColor: Colors.light.border }]}>
+      <StickyActionBar direction="column">
         <Button
           label={
             registered.data
@@ -145,14 +149,13 @@ export default function EventDetailScreen() {
             register.mutate();
           }}
         />
-      </View>
+      </StickyActionBar>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.light.background },
-  scroll: { paddingBottom: Spacing.huge * 2 },
   hero: { height: 360, overflow: 'hidden' },
   heroSafe: { flex: 1, padding: Spacing.xl, justifyContent: 'space-between' },
   backButton: {
@@ -175,15 +178,5 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     borderRadius: 12,
     backgroundColor: Colors.light.backgroundElement,
-  },
-  footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    padding: Spacing.xl,
-    paddingBottom: Spacing.xxl,
-    backgroundColor: Colors.light.surface,
-    borderTopWidth: 1,
   },
 });

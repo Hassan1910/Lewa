@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PaystackCheckoutModal, type PaystackCheckoutResult } from '@/components/paystack-checkout-modal';
 import { ThemedText } from '@/components/themed-text';
-import { Button, EmptyState, Icon, InputField, LoadingState, QuantityStepper, StatusBadge } from '@/components/ui';
+import { Button, EmptyState, Icon, InputField, LoadingState, QuantityStepper, StatusBadge, StickyActionBar, stickyActionBarScrollPadding, useStickyActionBarInset } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
 import { createBooking } from '@/services/bookings';
@@ -37,6 +37,7 @@ function nextNDays(n: number): Date[] {
 export default function BookingScreen() {
   const { serviceId } = useLocalSearchParams<{ serviceId: string }>();
   const { session, profile } = useAuth();
+  const bottomInset = useStickyActionBarInset();
   const { data: service, isLoading } = useQuery({
     queryKey: ['tourism', serviceId],
     queryFn: () => getTourismById(serviceId!),
@@ -190,7 +191,10 @@ export default function BookingScreen() {
         </ThemedText>
       </SafeAreaView>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.content, { paddingBottom: stickyActionBarScrollPadding(bottomInset) }]}
+      >
         {step === 'date' ? (
           <View style={styles.list}>
             {nextNDays(10).map((d) => {
@@ -283,7 +287,7 @@ export default function BookingScreen() {
         ) : null}
       </ScrollView>
 
-      <View style={[styles.footer, { borderColor: Colors.light.border }]}>
+      <StickyActionBar>
         <View>
           <ThemedText type="caption" themeColor="textSecondary">
             Estimated total
@@ -299,7 +303,7 @@ export default function BookingScreen() {
           onPress={() => void advance()}
           trailingIcon={<Icon name="arrow.right" size={16} color="#FFFFFF" />}
         />
-      </View>
+      </StickyActionBar>
       <PaystackCheckoutModal authorizationUrl={checkout?.init.authorizationUrl ?? null} onComplete={(result) => void onCheckout(result)} />
     </View>
   );
@@ -340,7 +344,7 @@ const styles = StyleSheet.create({
   back: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   stepper: { flexDirection: 'row', gap: Spacing.xs },
   stepDot: { flex: 1, height: 4, borderRadius: 2 },
-  content: { padding: Spacing.xl, paddingBottom: Spacing.huge * 2, gap: Spacing.lg },
+  content: { padding: Spacing.xl, gap: Spacing.lg },
   list: { gap: Spacing.md },
   dateRow: {
     flexDirection: 'row',
@@ -367,19 +371,5 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     borderRadius: Radius.medium,
     backgroundColor: Colors.light.backgroundElement,
-  },
-  footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    padding: Spacing.xl,
-    paddingBottom: Spacing.xxl,
-    backgroundColor: Colors.light.surface,
-    borderTopWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.md,
   },
 });

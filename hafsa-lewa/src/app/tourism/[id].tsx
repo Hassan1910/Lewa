@@ -5,7 +5,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { Button, EmptyState, ErrorState, Icon, ImageWithFallback, LoadingState, SectionHeader, StatusBadge } from '@/components/ui';
+import { Button, EmptyState, ErrorState, Icon, ImageWithFallback, LoadingState, SectionHeader, StatusBadge, StickyActionBar, stickyActionBarScrollPadding, useStickyActionBarInset } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
 import { getTourismById, getTourismPriceCaption } from '@/services/tourism';
@@ -14,6 +14,7 @@ import { formatCurrency } from '@/utils/format';
 export default function TourismDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
+  const bottomInset = useStickyActionBarInset();
   const { data: service, isLoading, error } = useQuery({
     queryKey: ['tourism', id],
     queryFn: () => getTourismById(id!),
@@ -54,7 +55,10 @@ export default function TourismDetailScreen() {
   return (
     <View style={styles.root}>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: stickyActionBarScrollPadding(bottomInset) }}
+      >
         <View style={styles.hero}>
           <ImageWithFallback
             uri={service.heroImageUrl ?? service.imageUrl}
@@ -138,7 +142,7 @@ export default function TourismDetailScreen() {
         </View>
       </ScrollView>
 
-      <View style={[styles.footer, { borderColor: Colors.light.border }]}>
+      <StickyActionBar>
         <View>
           <ThemedText type="caption" themeColor="textSecondary">
             From
@@ -157,14 +161,13 @@ export default function TourismDetailScreen() {
           }
           trailingIcon={<Icon name="arrow.right" size={16} color="#FFFFFF" />}
         />
-      </View>
+      </StickyActionBar>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.light.background },
-  scroll: { paddingBottom: Spacing.huge * 2 },
   hero: { height: 380, overflow: 'hidden' },
   heroSafe: { flex: 1, padding: Spacing.xl, justifyContent: 'space-between' },
   backButton: {
@@ -183,18 +186,4 @@ const styles = StyleSheet.create({
   body: { padding: Spacing.xl, gap: Spacing.lg },
   item: { flexDirection: 'row', gap: Spacing.md, alignItems: 'flex-start' },
   itemText: { flex: 1 },
-  footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    padding: Spacing.xl,
-    paddingBottom: Spacing.xxl,
-    backgroundColor: Colors.light.surface,
-    borderTopWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.md,
-  },
 });
