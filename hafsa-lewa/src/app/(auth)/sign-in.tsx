@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, router, Stack } from 'expo-router';
+import { Link, router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Button, Icon, InputField, ScrollScreen } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { authHref, destinationAfterAuth, safeReturnTo } from '@/lib/auth-redirect';
 import { useAuth } from '@/lib/auth-context';
 
 const schema = z.object({
@@ -20,6 +21,8 @@ type FormValues = z.infer<typeof schema>;
 
 export default function SignInScreen() {
   const theme = useTheme();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>();
+  const resumeAt = safeReturnTo(returnTo);
   const { signIn, resetPassword } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const {
@@ -36,7 +39,7 @@ export default function SignInScreen() {
     setSubmitting(true);
     try {
       await signIn(values.email.trim(), values.password);
-      router.replace('/(tabs)');
+      router.replace(destinationAfterAuth(returnTo));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign-in failed';
       Alert.alert('Sign in', message);
@@ -124,7 +127,7 @@ export default function SignInScreen() {
           <ThemedText type="bodySmall" themeColor="textSecondary">
             Don’t have an account?{' '}
           </ThemedText>
-          <Link href="/(auth)/create-account">
+          <Link href={authHref('create-account', resumeAt)} replace>
             <ThemedText type="bodySmall" themeColor="primary">
               Create one
             </ThemedText>

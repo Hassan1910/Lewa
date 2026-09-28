@@ -8,6 +8,7 @@ import { PaystackCheckoutModal, type PaystackCheckoutResult } from '@/components
 import { ThemedText } from '@/components/themed-text';
 import { Button, EmptyState, Icon, InputField, LoadingState, QuantityStepper, StatusBadge, StickyActionBar, stickyActionBarScrollPadding, useStickyActionBarInset } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { authHref } from '@/lib/auth-redirect';
 import { useAuth } from '@/lib/auth-context';
 import { createBooking } from '@/services/bookings';
 import { confirmCheckout, initializePayment, type PaymentInitResult } from '@/services/payments';
@@ -47,11 +48,13 @@ export default function BookingScreen() {
   const [step, setStep] = useState<Step>('date');
   const [date, setDate] = useState<Date | null>(null);
   const [guests, setGuests] = useState(2);
-  const [name, setName] = useState(profile?.full_name ?? '');
-  const [email, setEmail] = useState(session?.user.email ?? '');
+  const [nameOverride, setNameOverride] = useState<string | null>(null);
+  const [emailOverride, setEmailOverride] = useState<string | null>(null);
   const [phone, setPhone] = useState(profile?.phone ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [checkout, setCheckout] = useState<{ init: PaymentInitResult; bookingReference: string } | null>(null);
+  const name = nameOverride ?? profile?.full_name ?? '';
+  const email = emailOverride ?? session?.user.email ?? profile?.email ?? '';
 
   const unitLabel = service ? getTourismPricingLabel(service) : 'per guest';
   const total = service ? calculateTourismTotal(service, guests) : 0;
@@ -66,7 +69,10 @@ export default function BookingScreen() {
           title="Sign in to book"
           message="Bookings require an account so we can confirm payment and send your itinerary."
           actionLabel="Sign in"
-          onAction={() => router.replace('/(auth)/sign-in')}
+          onAction={() => {
+            const id = Array.isArray(serviceId) ? serviceId[0] : serviceId;
+            router.replace(authHref('sign-in', id ? `/booking/${id}` : null));
+          }}
         />
       </View>
     );
@@ -240,12 +246,12 @@ export default function BookingScreen() {
 
         {step === 'details' ? (
           <View style={styles.form}>
-            <InputField label="Full name" placeholder="Amira Osman" value={name} onChangeText={setName} autoCapitalize="words" />
+            <InputField label="Full name" placeholder="Amira Osman" value={name} onChangeText={setNameOverride} autoCapitalize="words" />
             <InputField
               label="Email"
               placeholder="you@example.com"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={setEmailOverride}
               autoCapitalize="none"
               keyboardType="email-address"
             />
