@@ -17,7 +17,7 @@ export { WildlifeCard, type WildlifeCardProps } from './wildlife-card';
 export { TourismCard, type TourismCardProps } from './tourism-card';
 export { EventCard, type EventCardProps } from './event-card';
 export { DonationCard, type DonationCardProps } from './donation-card';
-export { BookingCard, type BookingCardProps } from './booking-card';
+export { BOOKING_STATUS_LABEL, BOOKING_STATUS_TONE, BookingCard, type BookingCardProps } from './booking-card';
 export { AnnouncementCard, type AnnouncementCardProps } from './announcement-card';
 export { NotificationItem, type NotificationItemProps } from './notification-item';
 export { ProfileRow, type ProfileRowProps } from './profile-row';

@@ -10,6 +10,7 @@ import { Colors, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
 import { listNotifications, markNotificationRead } from '@/services/notifications';
 import type { AppNotification } from '@/services/types';
+import { resolveNotificationDestination } from '@/utils/notification-destination';
 
 type Filter = 'all' | 'unread';
 
@@ -86,7 +87,8 @@ export default function NotificationsTab() {
                   unread={!n.readAt}
                   onPress={() => {
                     if (!n.readAt) markRead.mutate(n.id);
-                    if (n.deepLink) router.push(n.deepLink as never);
+                    const destination = resolveNotificationDestination(n);
+                    if (destination) router.push(destination as never);
                   }}
                 />
               ))}

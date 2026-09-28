@@ -90,6 +90,7 @@ export default function RootLayout() {
                 <Stack.Screen name="donations/[id]" options={{ presentation: 'card' }} />
                 <Stack.Screen name="donations/success" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="booking/[serviceId]" options={{ presentation: 'card' }} />
+                <Stack.Screen name="bookings/[id]" options={{ presentation: 'card' }} />
                 <Stack.Screen name="booking/confirmation" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="search" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="help" />

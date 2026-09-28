@@ -46,16 +46,18 @@ export async function applyVerifiedPayment(
   }
 
   if (payment.booking_id) {
+    const bookingId = payment.booking_id as string;
     await admin.from('bookings').update({
       status: 'confirmed',
       payment_status: 'success',
-    }).eq('id', payment.booking_id as string);
+    }).eq('id', bookingId);
     await admin.from('notifications').insert({
       user_id: payment.user_id,
       title: 'Booking confirmed',
       body: 'Your Lewa booking is confirmed. Paystack verified the payment in Kenyan Shillings.',
       type: 'payment_confirmation',
-      deep_link: '/(tabs)/bookings',
+      deep_link: `/bookings/${bookingId}`,
+      data: { bookingId },
       broadcast: false,
     });
   }
