@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PaystackCheckoutModal, type PaystackCheckoutResult } from '@/components/paystack-checkout-modal';
 import { ThemedText } from '@/components/themed-text';
-import { Button, EmptyState, ErrorState, Icon, ImageWithFallback, LoadingState, SectionHeader } from '@/components/ui';
+import { Button, EmptyState, ErrorState, Icon, ImageWithFallback, LoadingState, SectionHeader, StickyActionBar, stickyActionBarScrollPadding, useStickyActionBarInset } from '@/components/ui';
 import { Colors, FontFamily, Radius, Spacing } from '@/constants/theme';
 import { useAuth } from '@/lib/auth-context';
 import { createDonationIntent, getCampaignById } from '@/services/donations';
@@ -17,6 +17,7 @@ import { formatCurrency } from '@/utils/format';
 export default function DonationCampaignScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session, profile } = useAuth();
+  const bottomInset = useStickyActionBarInset();
   const { data: campaign, isLoading, error } = useQuery({
     queryKey: ['donations', id],
     queryFn: () => getCampaignById(id!),
@@ -123,7 +124,10 @@ export default function DonationCampaignScreen() {
   return (
     <View style={styles.root}>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: stickyActionBarScrollPadding(bottomInset) }}
+      >
         <View style={styles.hero}>
           <ImageWithFallback uri={campaign.coverImage} style={StyleSheet.absoluteFill} fallbackIcon="heart.fill" />
           <LinearGradient
@@ -226,7 +230,7 @@ export default function DonationCampaignScreen() {
         </View>
       </ScrollView>
 
-      <View style={[styles.footer, { borderColor: Colors.light.border }]}>
+      <StickyActionBar>
         <View>
           <ThemedText type="caption" themeColor="textSecondary">
             Giving
@@ -242,7 +246,7 @@ export default function DonationCampaignScreen() {
           onPress={() => void donate()}
           trailingIcon={<Icon name="heart.fill" size={16} color="#FFFFFF" />}
         />
-      </View>
+      </StickyActionBar>
       <PaystackCheckoutModal authorizationUrl={checkout?.authorizationUrl ?? null} onComplete={(result) => void onCheckout(result)} />
     </View>
   );
@@ -250,7 +254,6 @@ export default function DonationCampaignScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.light.background },
-  scroll: { paddingBottom: Spacing.huge * 2 },
   hero: { height: 360, overflow: 'hidden' },
   heroSafe: { flex: 1, padding: Spacing.xl, justifyContent: 'space-between' },
   backButton: {
@@ -305,19 +308,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.light.text,
     paddingVertical: Spacing.md,
-  },
-  footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    padding: Spacing.xl,
-    paddingBottom: Spacing.xxl,
-    backgroundColor: Colors.light.surface,
-    borderTopWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.md,
   },
 });

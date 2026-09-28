@@ -23,3 +23,8 @@ export { NotificationItem, type NotificationItemProps } from './notification-ite
 export { ProfileRow, type ProfileRowProps } from './profile-row';
 export { QuantityStepper, type QuantityStepperProps } from './quantity-stepper';
 export { ImageWithFallback, type ImageWithFallbackProps } from './image-with-fallback';
+export {
+  StickyActionBar,
+  stickyActionBarScrollPadding,
+  useStickyActionBarInset,
+} from './sticky-action-bar';
