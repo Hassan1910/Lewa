@@ -6,7 +6,7 @@ const fieldClass =
   'w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm font-medium text-stone-900 outline-none transition placeholder:font-normal placeholder:text-stone-400 focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/15';
 
 const POSITIVE = new Set(['confirmed', 'completed', 'success', 'active', 'published', 'resolved', 'closed', 'yes']);
-const WARNING = new Set(['pending_payment', 'payment_verification', 'open', 'in_progress', 'pending']);
+const WARNING = new Set(['pending_payment', 'payment_verification', 'open', 'in_progress', 'pending', 'processing']);
 const DANGER = new Set(['cancelled', 'canceled', 'refunded', 'suspended', 'archived', 'failed', 'rejected']);
 
 export type StatusTone = 'positive' | 'warning' | 'danger' | 'neutral';

@@ -88,3 +88,27 @@ body {
   background: #f5f5f4;
   color: #44403c;
 }
+
+.data-table tbody tr[data-selected='true'] td {
+  background: #ecfdf5;
+}
+
+.print-receipt {
+  display: none;
+}
+
+@media print {
+  #root {
+    display: none !important;
+  }
+
+  .print-receipt {
+    display: block;
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 24px;
+    background: white;
+    color: #1c1917;
+  }
+}

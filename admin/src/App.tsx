@@ -22,6 +22,8 @@ import {
 import { useAuth, type Role } from './lib/auth';
 import { formatCurrency, formatDate } from './lib/format';
 import { supabase } from './lib/supabase';
+import { PaymentsPage } from './pages/payments';
+import { ReportsPage } from './pages/reports';
 
 const METRICS: { key: string; label: string; icon: IconName }[] = [
   { key: 'profiles', label: 'Users', icon: 'users' },
@@ -621,29 +623,6 @@ function DonationsPage() {
   );
 }
 
-function PaymentsPage() {
-  const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
-  useEffect(() => {
-    void supabase.from('payments').select('*').order('created_at', { ascending: false }).then(({ data }) => setRows(data ?? []));
-  }, []);
-  return (
-    <DataTable>
-      <thead><tr><th>Reference</th><th>Amount</th><th>Status</th><th>Purpose</th><th>When</th></tr></thead>
-      <tbody>
-        {rows.length === 0 ? <EmptyRow colSpan={5} label="No payments yet." /> : rows.map((r) => (
-          <tr key={String(r.id)}>
-            <td className="font-medium">{String(r.reference)}</td>
-            <td>{formatCurrency(Number(r.amount), String(r.currency))}</td>
-            <td><Badge value={String(r.status)} /></td>
-            <td className="capitalize">{humanize(String(r.purpose ?? ''))}</td>
-            <td>{formatDate(String(r.created_at))}</td>
-          </tr>
-        ))}
-      </tbody>
-    </DataTable>
-  );
-}
-
 function NotificationsPage() {
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
@@ -732,22 +711,6 @@ function FeedbackPage() {
         ))}
       </tbody>
     </DataTable>
-  );
-}
-
-function ReportsPage() {
-  const [payments, setPayments] = useState<Array<Record<string, unknown>>>([]);
-  useEffect(() => {
-    void supabase.from('payments').select('amount, status, created_at, currency').then(({ data }) => setPayments(data ?? []));
-  }, []);
-  const success = payments.filter((p) => p.status === 'success');
-  const total = success.reduce((sum, p) => sum + Number(p.amount), 0);
-  return (
-    <div className="grid gap-4 md:grid-cols-3">
-      <StatCard label="Verified payments" value={formatCurrency(total)} icon="card" />
-      <StatCard label="Successful charges" value={success.length} icon="chart" />
-      <StatCard label="All payment rows" value={payments.length} icon="list" />
-    </div>
   );
 }
 
