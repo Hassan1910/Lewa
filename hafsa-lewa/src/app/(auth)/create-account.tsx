@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, router, Stack } from 'expo-router';
+import { Link, router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
@@ -9,6 +9,7 @@ import { ThemedText } from '@/components/themed-text';
 import { Button, Icon, InputField, ScrollScreen } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { authHref, destinationAfterAuth, safeReturnTo } from '@/lib/auth-redirect';
 import { useAuth } from '@/lib/auth-context';
 
 const schema = z.object({
@@ -21,6 +22,8 @@ type FormValues = z.infer<typeof schema>;
 
 export default function CreateAccountScreen() {
   const theme = useTheme();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>();
+  const resumeAt = safeReturnTo(returnTo);
   const { signUp } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const {
@@ -35,14 +38,17 @@ export default function CreateAccountScreen() {
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
     try {
-      await signUp(values.email.trim(), values.password, values.fullName.trim());
-      // If email confirmation is disabled in Supabase Auth settings, the user
-      // is signed in immediately and the root layout will redirect. If it is
-      // enabled, prompt them to confirm and return to sign-in.
+      const { hasSession } = await signUp(values.email.trim(), values.password, values.fullName.trim());
+      if (hasSession) {
+        router.replace(destinationAfterAuth(returnTo));
+        return;
+      }
+      // Email confirmation is required, so there is no session yet. Send them
+      // to sign-in with the same return path so the booking is still waiting.
       Alert.alert(
         'Account created',
-        'You are signed in. If your project requires email confirmation, check your inbox to verify your address.',
-        [{ text: 'Continue', onPress: () => router.replace('/(tabs)') }],
+        'Check your inbox to verify your address, then sign in to continue.',
+        [{ text: 'Continue', onPress: () => router.replace(authHref('sign-in', resumeAt)) }],
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign-up failed';
@@ -133,7 +139,7 @@ export default function CreateAccountScreen() {
           <ThemedText type="bodySmall" themeColor="textSecondary">
             Already have an account?{' '}
           </ThemedText>
-          <Link href="/(auth)/sign-in">
+          <Link href={authHref('sign-in', resumeAt)} replace>
             <ThemedText type="bodySmall" themeColor="primary">
               Sign in
             </ThemedText>

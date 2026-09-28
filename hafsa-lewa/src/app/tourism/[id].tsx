@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { Button, EmptyState, ErrorState, Icon, ImageWithFallback, LoadingState, SectionHeader, StatusBadge, StickyActionBar, stickyActionBarScrollPadding, useStickyActionBarInset } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
+import { authHref } from '@/lib/auth-redirect';
 import { useAuth } from '@/lib/auth-context';
 import { getTourismById, getTourismPriceCaption } from '@/services/tourism';
 import { formatCurrency } from '@/utils/format';
@@ -157,7 +158,9 @@ export default function TourismDetailScreen() {
         <Button
           label="Book now"
           onPress={() =>
-            session ? router.push(`/booking/${service.id}`) : router.push('/(auth)/sign-in')
+            session
+              ? router.push(`/booking/${service.id}`)
+              : router.push(authHref('sign-in', `/booking/${service.id}`))
           }
           trailingIcon={<Icon name="arrow.right" size={16} color="#FFFFFF" />}
         />
