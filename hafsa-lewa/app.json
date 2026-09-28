@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "hafsa-lewa",
+    "name": "Lewa",
     "slug": "hafsa-lewa",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,13 +8,14 @@
     "scheme": "hafsalewa",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/icon.png"
     },
     "android": {
+      "package": "com.chizicheza.hafsalewa",
+      "icon": "./assets/images/icon.png",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#2F5D3A",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
@@ -26,13 +27,21 @@
     "plugins": [
       "expo-router",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#2F5D3A"
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#2F5D3A",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 200
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -44,6 +53,12 @@
         "projectId": "2b6d79db-cd86-4866-a764-9dd61ed83149"
       }
     },
-    "owner": "chizicheza"
+    "owner": "chizicheza",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/2b6d79db-cd86-4866-a764-9dd61ed83149"
+    }
   }
 }

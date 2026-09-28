@@ -19,8 +19,13 @@ Deno.serve(async (req) => {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) return json({ error: 'Sign in required' }, 401);
 
-  const { data: profile } = await admin.from('profiles').select('role').eq('id', userData.user.id).single();
-  if (!['staff', 'administrator', 'super_admin'].includes(profile?.role ?? '')) {
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('role, status')
+    .eq('id', userData.user.id)
+    .single();
+  const staffRole = ['staff', 'administrator', 'super_admin'].includes(profile?.role ?? '');
+  if (!staffRole || profile?.status !== 'active') {
     return json({ error: 'Staff only' }, 403);
   }
 
@@ -36,6 +41,18 @@ Deno.serve(async (req) => {
     broadcast: !body.userId,
   });
   if (error) return json({ error: error.message }, 500);
+  try {
+    const { sendExpoPush } = await import('../_shared/push.ts');
+    await sendExpoPush(admin, {
+      userId: body.userId ?? null,
+      broadcast: !body.userId,
+      title: body.title,
+      body: body.message,
+      deepLink: body.deepLink ?? '/',
+    });
+  } catch {
+    // The in-app notification row is already stored.
+  }
   await admin.from('audit_logs').insert({
     actor_user_id: userData.user.id,
     action: 'create',

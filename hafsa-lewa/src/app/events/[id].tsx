@@ -1,22 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useCallback } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button, EmptyState, ErrorState, Icon, ImageWithFallback, LoadingState, SectionHeader, StatusBadge, StickyActionBar, stickyActionBarScrollPadding, useStickyActionBarInset } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useAuth } from '@/lib/auth-context';
 import { getEventById, getMyEventRegistration, registerForEvent } from '@/services/events';
 import { formatDate } from '@/utils/format';
+import { shareLewaItem } from '@/utils/share';
 
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session, profile } = useAuth();
   const bottomInset = useStickyActionBarInset();
   const queryClient = useQueryClient();
-  const { data: event, isLoading, error } = useQuery({
+  const { data: event, isLoading, error, refetch: refetchEvent } = useQuery({
     queryKey: ['events', id],
     queryFn: () => getEventById(id!),
     enabled: Boolean(id),
@@ -26,6 +29,12 @@ export default function EventDetailScreen() {
     queryFn: () => getMyEventRegistration(id!, session!.user.id),
     enabled: Boolean(id && session?.user.id),
   });
+  const { refetch: refetchRegistration } = registered;
+  const refreshEvent = useCallback(
+    () => Promise.all([refetchEvent(), refetchRegistration()]),
+    [refetchEvent, refetchRegistration],
+  );
+  const { refreshControl } = usePullToRefresh(refreshEvent, { tintColor: '#FFFFFF' });
   const register = useMutation({
     mutationFn: () =>
       registerForEvent({
@@ -78,7 +87,8 @@ export default function EventDetailScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: stickyActionBarScrollPadding(bottomInset) }}
+        contentContainerStyle={{ paddingBottom: stickyActionBarScrollPadding(bottomInset), flexGrow: 1 }}
+        refreshControl={refreshControl}
       >
         <View style={styles.hero}>
           <ImageWithFallback uri={event.imageUrl} style={StyleSheet.absoluteFill} fallbackIcon="calendar" />
@@ -88,9 +98,19 @@ export default function EventDetailScreen() {
             style={StyleSheet.absoluteFill}
           />
           <SafeAreaView edges={['top']} style={styles.heroSafe}>
-            <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={12}>
-              <Icon name="chevron.left" size={20} color="#FFFFFF" />
-            </Pressable>
+            <View style={styles.heroActions}>
+              <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={12}>
+                <Icon name="chevron.left" size={20} color="#FFFFFF" />
+              </Pressable>
+              <Pressable
+                onPress={() => void shareLewaItem(event.title, event.location)}
+                style={styles.backButton}
+                hitSlop={12}
+                accessibilityLabel={`Share ${event.title}`}
+              >
+                <Icon name="square.and.arrow.up" size={18} color="#FFFFFF" />
+              </Pressable>
+            </View>
             <View style={styles.heroBottom}>
               <StatusBadge label={event.eventType ?? 'Event'} tone="primary" />
               <ThemedText type="display" style={styles.heroTitle}>
@@ -158,6 +178,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.light.background },
   hero: { height: 360, overflow: 'hidden' },
   heroSafe: { flex: 1, padding: Spacing.xl, justifyContent: 'space-between' },
+  heroActions: { flexDirection: 'row', justifyContent: 'space-between' },
   backButton: {
     width: 40,
     height: 40,

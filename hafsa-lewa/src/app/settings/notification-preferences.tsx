@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
+import { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { EmptyState, Icon, LoadingState, SectionHeader } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useAuth } from '@/lib/auth-context';
 import { getNotificationPreferences, upsertNotificationPreferences } from '@/services/notifications';
 import type { NotificationPreferences } from '@/services/types';
@@ -48,11 +50,13 @@ const CATEGORIES: Preference[] = [
 export default function NotificationPreferencesScreen() {
   const { session } = useAuth();
   const queryClient = useQueryClient();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['notif-prefs', session?.user.id],
     queryFn: () => getNotificationPreferences(session!.user.id),
     enabled: Boolean(session?.user.id),
   });
+  const refreshPrefs = useCallback(() => refetch(), [refetch]);
+  const { refreshControl } = usePullToRefresh(refreshPrefs);
   const save = useMutation({
     mutationFn: upsertNotificationPreferences,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notif-prefs'] }),
@@ -101,7 +105,7 @@ export default function NotificationPreferencesScreen() {
         </ThemedText>
       </SafeAreaView>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} refreshControl={refreshControl}>
         {isLoading || !data ? <LoadingState /> : (
           <>
         <SectionHeader title="Channels" />
@@ -181,6 +185,7 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
     gap: Spacing.lg,
     paddingBottom: Spacing.huge,
+    flexGrow: 1,
   },
   group: {
     borderRadius: Radius.large,

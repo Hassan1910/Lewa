@@ -74,13 +74,8 @@ type EduRow = {
   reading_minutes: number | null;
 };
 
-export async function listEducationResources(): Promise<EducationResource[]> {
-  const { data, error } = await supabase
-    .from('education_resources')
-    .select('id, title, summary, content, category, cover_image, reading_minutes')
-    .order('title');
-  if (error) throw error;
-  return (data as EduRow[]).map((r) => ({
+function mapEducation(r: EduRow): EducationResource {
+  return {
     id: r.id,
     title: r.title,
     summary: r.summary,
@@ -88,7 +83,26 @@ export async function listEducationResources(): Promise<EducationResource[]> {
     category: r.category,
     coverImage: r.cover_image,
     readingMinutes: r.reading_minutes,
-  }));
+  };
+}
+
+export async function listEducationResources(): Promise<EducationResource[]> {
+  const { data, error } = await supabase
+    .from('education_resources')
+    .select('id, title, summary, content, category, cover_image, reading_minutes')
+    .order('title');
+  if (error) throw error;
+  return (data as EduRow[]).map(mapEducation);
+}
+
+export async function getEducationResource(id: string): Promise<EducationResource | null> {
+  const { data, error } = await supabase
+    .from('education_resources')
+    .select('id, title, summary, content, category, cover_image, reading_minutes')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? mapEducation(data as EduRow) : null;
 }
 
 // -------------------- community --------------------

@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -15,6 +16,7 @@ export type DonationCardProps = {
   raised: number;
   currency?: string;
   onPress?: () => void;
+  variant?: 'default' | 'band';
 };
 
 export function DonationCard({
@@ -25,9 +27,40 @@ export function DonationCard({
   raised,
   currency = 'KES',
   onPress,
+  variant = 'default',
 }: DonationCardProps) {
   const theme = useTheme();
   const progress = goal > 0 ? Math.min(1, raised / goal) : 0;
+
+  if (variant === 'band') {
+    return (
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        style={({ pressed }) => [styles.band, { opacity: pressed ? 0.92 : 1 }]}
+      >
+        <ImageWithFallback uri={imageUrl} style={styles.bandImage} fallbackIcon="heart.fill" />
+        <LinearGradient
+          colors={['rgba(15, 23, 17, 0)', 'rgba(15, 23, 17, 0.82)']}
+          locations={[0.35, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.bandCopy}>
+          <ThemedText type="h3" style={styles.bandTitle} numberOfLines={2}>
+            {title}
+          </ThemedText>
+          <View style={styles.bandTrack}>
+            <View style={[styles.progressBar, { backgroundColor: theme.accent, width: `${progress * 100}%` }]} />
+          </View>
+          <ThemedText type="caption" style={styles.bandMeta}>
+            {formatCurrency(raised, { currency })} of {formatCurrency(goal, { currency })}
+          </ThemedText>
+        </View>
+      </Pressable>
+    );
+  }
+
   return (
     <Pressable
       onPress={onPress}
@@ -93,5 +126,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  band: {
+    aspectRatio: 16 / 8,
+    borderRadius: Radius.large,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+  },
+  bandImage: {
+    ...StyleSheet.absoluteFill,
+    width: '100%',
+    height: '100%',
+  },
+  bandCopy: {
+    padding: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  bandTitle: {
+    color: '#FFFFFF',
+  },
+  bandTrack: {
+    height: 3,
+    borderRadius: 999,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.35)',
+  },
+  bandMeta: {
+    color: 'rgba(255,255,255,0.9)',
   },
 });

@@ -96,6 +96,93 @@ export async function confirmCheckout(init: Pick<PaymentInitResult, 'paymentId' 
   }
 }
 
+export type BookingPayment = {
+  id: string;
+  reference: string;
+  receiptNumber: string | null;
+  provider: string;
+  authorizationUrl: string | null;
+  amount: number;
+  currency: string;
+  status: 'pending' | 'processing' | 'success' | 'failed' | 'cancelled' | 'refunded';
+  paidAt: string | null;
+  createdAt: string;
+};
+
+const PAYMENT_SELECT =
+  'id, reference, receipt_number, provider, authorization_url, amount, currency, status, paid_at, created_at';
+
+type PaymentRow = {
+  id: string;
+  reference: string;
+  receipt_number: string | null;
+  provider: string | null;
+  authorization_url: string | null;
+  amount: number | string;
+  currency: string;
+  status: BookingPayment['status'];
+  paid_at: string | null;
+  created_at: string;
+};
+
+function mapPayment(data: PaymentRow): BookingPayment {
+  return {
+    id: data.id,
+    reference: data.reference,
+    receiptNumber: data.receipt_number,
+    provider: data.provider ?? 'paystack',
+    authorizationUrl: data.authorization_url,
+    amount: Number(data.amount),
+    currency: data.currency,
+    status: data.status,
+    paidAt: data.paid_at,
+    createdAt: data.created_at,
+  };
+}
+
+/** Parent record on a payment the signed-in user can read. RLS hides other owners. */
+export async function getPaymentParent(paymentId: string): Promise<{
+  bookingId: string | null;
+  donationId: string | null;
+} | null> {
+  const { data, error } = await supabase
+    .from('payments')
+    .select('booking_id, donation_id')
+    .eq('id', paymentId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const bookingId = typeof data.booking_id === 'string' ? data.booking_id : null;
+  const donationId = typeof data.donation_id === 'string' ? data.donation_id : null;
+  return { bookingId, donationId };
+}
+
+/** Newest Paystack row for a booking the signed-in user can read. */
+export async function getLatestBookingPayment(bookingId: string): Promise<BookingPayment | null> {
+  const { data, error } = await supabase
+    .from('payments')
+    .select(PAYMENT_SELECT)
+    .eq('booking_id', bookingId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? mapPayment(data as PaymentRow) : null;
+}
+
+/** Newest Paystack row for a donation the signed-in user can read. */
+export async function getLatestDonationPayment(donationId: string): Promise<BookingPayment | null> {
+  const { data, error } = await supabase
+    .from('payments')
+    .select(PAYMENT_SELECT)
+    .eq('donation_id', donationId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? mapPayment(data as PaymentRow) : null;
+}
+
 export type PaymentRecord = {
   id: string;
   reference: string;

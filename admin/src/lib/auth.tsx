@@ -54,9 +54,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       session,
       profile,
-      isStaff: ['staff', 'administrator', 'super_admin'].includes(profile?.role ?? ''),
-      isAdmin: ['administrator', 'super_admin'].includes(profile?.role ?? ''),
-      isSuper: profile?.role === 'super_admin',
+      isStaff:
+        profile?.status === 'active' &&
+        ['staff', 'administrator', 'super_admin'].includes(profile.role),
+      isAdmin:
+        profile?.status === 'active' &&
+        ['administrator', 'super_admin'].includes(profile.role),
+      isSuper: profile?.status === 'active' && profile.role === 'super_admin',
       signIn: async (email, password) => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;

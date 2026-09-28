@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -34,6 +35,28 @@ export function WildlifeCard({
 }: WildlifeCardProps) {
   const theme = useTheme();
   const compact = variant === 'compact';
+
+  if (compact) {
+    return (
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={name}
+        style={({ pressed }) => [styles.compact, { opacity: pressed ? 0.92 : 1 }]}
+      >
+        <ImageWithFallback uri={imageUrl} style={styles.compactImage} fallbackIcon="pawprint.fill" />
+        <LinearGradient
+          colors={['rgba(15, 23, 17, 0)', 'rgba(15, 23, 17, 0.72)']}
+          locations={[0.45, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+        <ThemedText type="h3" numberOfLines={2} style={styles.compactName}>
+          {name}
+        </ThemedText>
+      </Pressable>
+    );
+  }
+
   return (
     <Pressable
       onPress={onPress}
@@ -42,18 +65,14 @@ export function WildlifeCard({
         {
           backgroundColor: theme.surface,
           borderColor: theme.border,
-          width: compact ? 200 : '100%',
+          width: '100%',
           opacity: pressed ? 0.92 : 1,
         },
       ]}
     >
-      <ImageWithFallback
-        uri={imageUrl}
-        style={[styles.image, { aspectRatio: compact ? 4 / 5 : 16 / 10 }]}
-        fallbackIcon="pawprint.fill"
-      />
+      <ImageWithFallback uri={imageUrl} style={styles.image} fallbackIcon="pawprint.fill" />
       <View style={styles.body}>
-        <ThemedText type={compact ? 'h3' : 'h2'} numberOfLines={1}>
+        <ThemedText type="h2" numberOfLines={1}>
           {name}
         </ThemedText>
         {scientificName ? (
@@ -79,6 +98,23 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
+    aspectRatio: 16 / 10,
+  },
+  compact: {
+    width: 200,
+    aspectRatio: 4 / 5,
+    borderRadius: Radius.large,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+  },
+  compactImage: {
+    ...StyleSheet.absoluteFill,
+    width: '100%',
+    height: '100%',
+  },
+  compactName: {
+    color: '#FFFFFF',
+    padding: Spacing.lg,
   },
   body: {
     padding: Spacing.lg,

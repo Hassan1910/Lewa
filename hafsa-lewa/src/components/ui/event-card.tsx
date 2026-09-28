@@ -15,9 +15,18 @@ export type EventCardProps = {
   imageUrl?: string | null;
   onPress?: () => void;
   variant?: 'default' | 'row';
+  bordered?: boolean;
 };
 
-export function EventCard({ title, isoDate, location, imageUrl, onPress, variant = 'default' }: EventCardProps) {
+export function EventCard({
+  title,
+  isoDate,
+  location,
+  imageUrl,
+  onPress,
+  variant = 'default',
+  bordered = true,
+}: EventCardProps) {
   const theme = useTheme();
   const isRow = variant === 'row';
   return (
@@ -27,8 +36,9 @@ export function EventCard({ title, isoDate, location, imageUrl, onPress, variant
         styles.container,
         isRow ? styles.row : styles.stack,
         {
-          backgroundColor: theme.surface,
+          backgroundColor: bordered ? theme.surface : 'transparent',
           borderColor: theme.border,
+          borderWidth: bordered ? StyleSheet.hairlineWidth : 0,
           opacity: pressed ? 0.92 : 1,
         },
       ]}
@@ -73,7 +83,6 @@ export function EventCard({ title, isoDate, location, imageUrl, onPress, variant
 const styles = StyleSheet.create({
   container: {
     borderRadius: Radius.large,
-    borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
   },
   stack: {

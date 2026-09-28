@@ -5,18 +5,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Icon } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { openBookingRecord, searchParam } from '@/lib/record-navigation';
 import { formatCurrency, formatDateOnly } from '@/utils/format';
 
 export default function ConfirmationScreen() {
-  const params = useLocalSearchParams<{
-    reference?: string;
-    serviceTitle?: string;
-    date?: string;
-    guests?: string;
-    total?: string;
-    status?: string;
-  }>();
-  const paid = params.status === 'success';
+  const raw = useLocalSearchParams();
+  const bookingId = searchParam(raw.bookingId);
+  const reference = searchParam(raw.reference);
+  const serviceTitle = searchParam(raw.serviceTitle);
+  const date = searchParam(raw.date);
+  const guests = searchParam(raw.guests);
+  const total = searchParam(raw.total);
+  const status = searchParam(raw.status);
+  const paid = status === 'success';
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -34,22 +35,28 @@ export default function ConfirmationScreen() {
         </ThemedText>
         <ThemedText type="body" themeColor="textSecondary" style={styles.center}>
           {paid
-            ? 'Paystack verified your payment. You can find this booking in the Bookings tab.'
+            ? 'Paystack verified your payment. Open this booking to see the details and receipt.'
             : 'If you completed checkout, confirmation can take a moment while Paystack notifies us. Check Bookings for the latest status.'}
         </ThemedText>
 
         <View style={[styles.card, { borderColor: Colors.light.border }]}>
-          <Row label="Reference" value={params.reference ?? '—'} />
-          <Row label="Experience" value={params.serviceTitle ?? '—'} />
-          <Row label="Date" value={params.date ? formatDateOnly(String(params.date)) : '—'} />
-          <Row label="Guests" value={params.guests ?? '—'} />
-          <Row label="Amount" value={params.total ? formatCurrency(Number(params.total)) : '—'} />
-          <Row label="Status" value={paid ? 'Paid · confirmed' : params.status ?? 'pending'} />
+          <Row label="Reference" value={reference ?? '—'} />
+          <Row label="Experience" value={serviceTitle ?? '—'} />
+          <Row label="Date" value={date ? formatDateOnly(date) : '—'} />
+          <Row label="Guests" value={guests ?? '—'} />
+          <Row label="Amount" value={total ? formatCurrency(Number(total)) : '—'} />
+          <Row label="Status" value={paid ? 'Paid · confirmed' : status ?? 'pending'} />
         </View>
       </View>
 
       <View style={styles.footer}>
-        <Button label="View my bookings" fullWidth onPress={() => router.replace('/(tabs)/bookings')} />
+        {bookingId ? (
+          <Button label="View My Booking" fullWidth onPress={() => openBookingRecord(bookingId, 'replace')} />
+        ) : (
+          <ThemedText type="body" themeColor="textSecondary" style={styles.center}>
+            This confirmation has no booking to open.
+          </ThemedText>
+        )}
         <Button label="Back to home" variant="tertiary" fullWidth onPress={() => router.replace('/(tabs)')} />
       </View>
     </SafeAreaView>

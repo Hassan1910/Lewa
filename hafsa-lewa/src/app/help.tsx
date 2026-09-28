@@ -1,16 +1,19 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button, ErrorState, FilterChip, Icon, LoadingState, SearchBar, SectionHeader } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { listFaqs } from '@/services/content';
 
 export default function HelpScreen() {
-  const { data: faqs = [], isLoading, error } = useQuery({ queryKey: ['faqs'], queryFn: listFaqs });
+  const { data: faqs = [], isLoading, error, refetch } = useQuery({ queryKey: ['faqs'], queryFn: listFaqs });
+  const refreshFaqs = useCallback(() => refetch(), [refetch]);
+  const { refreshControl } = usePullToRefresh(refreshFaqs);
   const categories = useMemo(() => Array.from(new Set(faqs.map((f) => f.category))), [faqs]);
   const [category, setCategory] = useState<string>('General');
   const [query, setQuery] = useState('');
@@ -56,7 +59,7 @@ export default function HelpScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} refreshControl={refreshControl}>
         {isLoading ? <LoadingState /> : null}
         {error ? <ErrorState message={(error as Error).message} /> : null}
         <SectionHeader title={activeCategory} />
@@ -96,9 +99,30 @@ export default function HelpScreen() {
         </View>
 
         <View style={styles.contact}>
-          <ThemedText type="h3">Still stuck?</ThemedText>
+          <ThemedText type="h3">Contact Lewa</ThemedText>
           <ThemedText type="bodySmall" themeColor="textSecondary">
-            Our team is on hand between 8am and 6pm East Africa Time.
+            Lewa Wildlife Conservancy{'\n'}Isiolo 60300, Kenya
+          </ThemedText>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="Call Lewa on +254 722 203562"
+            onPress={() => {
+              void Linking.openURL('tel:+254722203562');
+            }}
+          >
+            <ThemedText type="bodyMedium">+254-722-203562/3</ThemedText>
+          </Pressable>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="Email info@lewa.org"
+            onPress={() => {
+              void Linking.openURL('mailto:info@lewa.org');
+            }}
+          >
+            <ThemedText type="bodyMedium">info@lewa.org</ThemedText>
+          </Pressable>
+          <ThemedText type="bodySmall" themeColor="textSecondary">
+            Can’t find what you need? Send us a note.
           </ThemedText>
           <Button label="Send feedback" onPress={() => router.push('/feedback')} />
         </View>
@@ -129,6 +153,7 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
     paddingBottom: Spacing.huge,
     gap: Spacing.lg,
+    flexGrow: 1,
   },
   item: {
     borderRadius: Radius.medium,

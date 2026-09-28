@@ -76,6 +76,32 @@ export function calculateTourismTotal(service: TourismService, guests: number): 
   return service.pricingUnit === 'per_guest' ? service.price * guests : service.price;
 }
 
+export type ServiceSlot = {
+  date: string;
+  remaining: number;
+  capacity: number;
+};
+
+/** Open dates with seats left. Empty when availability has not been published yet. */
+export async function listOpenAvailability(serviceId: string): Promise<ServiceSlot[]> {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data, error } = await supabase
+    .from('service_availability')
+    .select('date, remaining_capacity, capacity, status')
+    .eq('service_id', serviceId)
+    .eq('status', 'open')
+    .gte('date', today)
+    .gt('remaining_capacity', 0)
+    .order('date')
+    .limit(21);
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    date: String(row.date).slice(0, 10),
+    remaining: Number(row.remaining_capacity),
+    capacity: Number(row.capacity),
+  }));
+}
+
 export function getTourismPricingLabel(service: TourismService): string {
   if (service.pricingUnit === 'per_booking') {
     return service.durationLabel?.startsWith('per ') ? service.durationLabel : 'per booking';

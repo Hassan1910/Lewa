@@ -1,13 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { BookingCard, Button, EmptyState, ErrorState, FilterChip, LoadingState } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useAuth } from '@/lib/auth-context';
+import { openBookingRecord } from '@/lib/record-navigation';
 import { listMyBookings } from '@/services/bookings';
 
 type Tab = 'upcoming' | 'past';
@@ -39,6 +41,8 @@ export default function BookingsTab() {
   }, [data]);
 
   const list = tab === 'upcoming' ? upcoming : past;
+  const refreshBookings = useCallback(() => refetch(), [refetch]);
+  const { refreshControl } = usePullToRefresh(refreshBookings);
 
   if (!session) {
     return (
@@ -74,7 +78,11 @@ export default function BookingsTab() {
         </View>
       </SafeAreaView>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+        refreshControl={refreshControl}
+      >
         {isLoading ? <LoadingState /> : null}
         {error ? <ErrorState message={(error as Error).message} onRetry={() => refetch()} /> : null}
         {!isLoading && !error && list.length === 0 ? (
@@ -102,7 +110,7 @@ export default function BookingsTab() {
                 reference={b.reference}
                 amount={b.amount}
                 currency={b.currency}
-                onPress={() => router.push(`/bookings/${b.id}`)}
+                onPress={() => openBookingRecord(b.id)}
               />
             ))}
             {tab === 'upcoming' ? (

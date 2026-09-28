@@ -51,23 +51,29 @@ export function TourismCard({
         fallbackIcon="binoculars.fill"
       />
       <View style={styles.body}>
-        <StatusBadge label={category} tone="primary" />
+        {compact ? null : <StatusBadge label={category} tone="primary" />}
         <ThemedText type="h3" numberOfLines={2}>
           {title}
         </ThemedText>
-        <View style={styles.metaRow}>
-          {durationLabel ? (
-            <View style={styles.metaItem}>
-              <Icon name="clock" size={14} color={theme.textSecondary} />
-              <ThemedText type="caption" themeColor="textSecondary">
-                {durationLabel}
-              </ThemedText>
-            </View>
-          ) : null}
+        {compact ? (
           <ThemedText type="bodyMedium" themeColor="primary">
             {formatCurrency(price, { currency })}
           </ThemedText>
-        </View>
+        ) : (
+          <View style={styles.metaRow}>
+            {durationLabel ? (
+              <View style={styles.metaItem}>
+                <Icon name="clock" size={14} color={theme.textSecondary} />
+                <ThemedText type="caption" themeColor="textSecondary">
+                  {durationLabel}
+                </ThemedText>
+              </View>
+            ) : null}
+            <ThemedText type="bodyMedium" themeColor="primary">
+              {formatCurrency(price, { currency })}
+            </ThemedText>
+          </View>
+        )}
       </View>
     </Pressable>
   );

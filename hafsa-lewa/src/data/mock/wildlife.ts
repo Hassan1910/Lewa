@@ -29,19 +29,19 @@ export const WILDLIFE: WildlifeSpecies[] = [
     scientificName: 'Equus grevyi',
     category: 'Mammals',
     conservationStatus: 'Endangered',
-    imageUrl: 'https://images.unsplash.com/photo-1546182990-dffeafbe841d?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1535076404789-9c49ee899990?auto=format&fit=crop&w=1200&q=80',
     heroImageUrl:
-      'https://images.unsplash.com/photo-1516934024742-b461fba47600?auto=format&fit=crop&w=1600&q=80',
+      'https://images.unsplash.com/photo-1535076404789-9c49ee899990?auto=format&fit=crop&w=1600&q=80',
     featured: true,
     description:
-      'The largest of the wild equids and one of the most threatened. Lewa protects roughly 14% of the world’s remaining Grevy’s zebra population.',
+      'The largest of the wild equids and one of the most threatened. Lewa protects Grevy’s zebra on the northern Kenya landscape, together with black rhino, elephant, lion, and giraffe.',
     habitat: 'Semi-arid grasslands and acacia scrub of northern Kenya.',
     behavior:
       'Territorial stallions defend water sources; females and foals move between territories in small groups.',
     facts: [
       'Distinguished by narrower stripes and a white belly.',
-      'Population has declined more than 50% in three decades.',
-      'Lewa runs community scout programs to protect calving grounds.',
+      'Lewa names Grevy’s zebra among the endangered species it works to protect.',
+      'Habitat protection and community partnerships support the herds on this landscape.',
     ],
   },
   {
@@ -50,18 +50,19 @@ export const WILDLIFE: WildlifeSpecies[] = [
     scientificName: 'Diceros bicornis',
     category: 'Mammals',
     conservationStatus: 'Critically Endangered',
-    imageUrl: 'https://images.unsplash.com/photo-1567859667906-bafa2c14b4f2?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1711709377447-a4c63ce1bcbc?auto=format&fit=crop&w=1200&q=80',
     heroImageUrl:
-      'https://images.unsplash.com/photo-1518709414768-a88981a4515d?auto=format&fit=crop&w=1600&q=80',
+      'https://images.unsplash.com/photo-1711709377447-a4c63ce1bcbc?auto=format&fit=crop&w=1600&q=80',
     featured: true,
     description:
-      'A browsing rhinoceros with a hooked upper lip. Lewa is a black-rhino stronghold in northern Kenya.',
+      'A browsing rhinoceros with a hooked upper lip. Lewa reports that 14% of Kenya’s rhino population lives on this landscape.',
     habitat: 'Dense bushland and forest edges within the conservancy.',
     behavior: 'Solitary and mostly nocturnal, with excellent sense of smell and hearing.',
     facts: [
-      'Every rhino at Lewa is monitored 24/7 by rangers.',
-      'Lewa has not lost a rhino to poaching in multiple recent years thanks to intensive protection.',
-      'Newborn calves stay with their mothers for 2–3 years.',
+      'A March 2025 count put the Lewa–Borana landscape at 273 rhinos: 130 black and 143 white.',
+      'That count included 33 calves, 14 of them black and 19 white.',
+      'A later 2025 update reported more than 280 rhinos on the landscape.',
+      'The rhino sanctuary covers about 93,000 acres. Lewa itself is described as 62,000 acres of protected wilderness.',
     ],
   },
   {
@@ -72,7 +73,7 @@ export const WILDLIFE: WildlifeSpecies[] = [
     conservationStatus: 'Endangered',
     imageUrl: 'https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=1200&q=80',
     heroImageUrl:
-      'https://images.unsplash.com/photo-1534567110243-8875d64ca8ff?auto=format&fit=crop&w=1600&q=80',
+      'https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=1600&q=80',
     featured: true,
     description:
       'Recognisable by its striking web-like coat pattern, the reticulated giraffe is only found in the Horn of Africa.',
@@ -89,9 +90,9 @@ export const WILDLIFE: WildlifeSpecies[] = [
     scientificName: 'Loxodonta africana',
     category: 'Mammals',
     conservationStatus: 'Endangered',
-    imageUrl: 'https://images.unsplash.com/photo-1509909756405-be0199881695?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1586584535372-2ec07cdb83ff?auto=format&fit=crop&w=1200&q=80',
     heroImageUrl:
-      'https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=1600&q=80',
+      'https://images.unsplash.com/photo-1586584535372-2ec07cdb83ff?auto=format&fit=crop&w=1600&q=80',
     featured: false,
     description:
       'Lewa forms part of a critical wildlife corridor linking Mount Kenya to the Ngare Ndare Forest, used by elephant families year-round.',
@@ -127,9 +128,9 @@ export const WILDLIFE: WildlifeSpecies[] = [
     scientificName: 'Lycaon pictus',
     category: 'Predators',
     conservationStatus: 'Endangered',
-    imageUrl: 'https://images.unsplash.com/photo-1502248103506-76afc15f5c45?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1759145223102-a0982d8161e0?auto=format&fit=crop&w=1200&q=80',
     heroImageUrl:
-      'https://images.unsplash.com/photo-1502248103506-76afc15f5c45?auto=format&fit=crop&w=1600&q=80',
+      'https://images.unsplash.com/photo-1759145223102-a0982d8161e0?auto=format&fit=crop&w=1600&q=80',
     featured: false,
     description:
       'One of Africa’s most endangered carnivores. Packs range across northern Kenya, moving in and out of Lewa.',
@@ -146,9 +147,10 @@ export const WILDLIFE: WildlifeSpecies[] = [
     scientificName: 'Ardeotis kori',
     category: 'Birds',
     conservationStatus: 'Near Threatened',
-    imageUrl: 'https://images.unsplash.com/photo-1516934024742-b461fba47600?auto=format&fit=crop&w=1200&q=80',
+    imageUrl:
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Kori_bustard_%28Ardeotis_kori%29.jpg/1280px-Kori_bustard_%28Ardeotis_kori%29.jpg',
     heroImageUrl:
-      'https://images.unsplash.com/photo-1516934024742-b461fba47600?auto=format&fit=crop&w=1600&q=80',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Kori_bustard_%28Ardeotis_kori%29.jpg/1920px-Kori_bustard_%28Ardeotis_kori%29.jpg',
     featured: false,
     description:
       'One of the heaviest flying birds. Regularly seen striding across Lewa’s open plains.',

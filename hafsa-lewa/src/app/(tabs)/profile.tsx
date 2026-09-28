@@ -1,14 +1,18 @@
 import { router } from 'expo-router';
+import { useCallback } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button, ProfileRow, SectionHeader } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useAuth } from '@/lib/auth-context';
 
 export default function ProfileTab() {
-  const { session, profile, signOut } = useAuth();
+  const { session, profile, signOut, refreshProfile } = useAuth();
+  const refresh = useCallback(() => refreshProfile(), [refreshProfile]);
+  const { refreshControl } = usePullToRefresh(refresh);
   const name = profile?.full_name || session?.user.email?.split('@')[0] || 'Guest';
   const email = profile?.email || session?.user.email || 'Browse as guest';
   const since = profile
@@ -21,7 +25,11 @@ export default function ProfileTab() {
         <ThemedText type="h1">Profile</ThemedText>
       </SafeAreaView>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+        refreshControl={refreshControl}
+      >
         <View style={[styles.card, { borderColor: Colors.light.border }]}>
           <View style={[styles.avatar, { backgroundColor: Colors.light.primaryLight }]}>
             <ThemedText type="h1" themeColor="primaryDark">
@@ -47,7 +55,7 @@ export default function ProfileTab() {
         <SectionHeader title="Activity" />
         <View style={styles.group}>
           <ProfileRow icon="calendar" label="My bookings" hint="Upcoming and past" onPress={() => router.push('/(tabs)/bookings')} />
-          <ProfileRow icon="heart.fill" label="Donations" hint="Campaigns you support" onPress={() => router.push('/donations')} />
+          <ProfileRow icon="heart.fill" label="Donations" hint="Gifts on this account" onPress={() => router.push('/donations/history')} />
           <ProfileRow
             icon="creditcard.fill"
             label="Payments"
@@ -70,6 +78,8 @@ export default function ProfileTab() {
           <ProfileRow icon="questionmark.circle" label="Help & FAQ" onPress={() => router.push('/help')} />
           <ProfileRow icon="envelope" label="Send feedback" onPress={() => router.push('/feedback')} />
           <ProfileRow icon="info.circle" label="About Lewa" hint="Our story and impact" onPress={() => router.push('/about')} />
+          <ProfileRow icon="lock" label="Privacy" onPress={() => router.push('/legal/privacy' as never)} />
+          <ProfileRow icon="doc.text" label="Terms" onPress={() => router.push('/legal/terms' as never)} />
         </View>
 
         {session ? (
@@ -101,7 +111,7 @@ export default function ProfileTab() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.light.background },
   header: { padding: Spacing.xl },
-  content: { padding: Spacing.xl, paddingTop: 0, paddingBottom: Spacing.huge, gap: Spacing.lg },
+  content: { padding: Spacing.xl, paddingTop: 0, paddingBottom: Spacing.huge, gap: Spacing.lg, flexGrow: 1 },
   card: {
     flexDirection: 'row',
     alignItems: 'center',

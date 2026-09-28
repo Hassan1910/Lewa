@@ -1,55 +1,102 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useIsFocused } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import {
   AnnouncementCard,
+  Button,
   DonationCard,
   ErrorState,
   EventCard,
   Icon,
   ImageWithFallback,
-  LoadingState,
   SearchBar,
   SectionHeader,
+  SkeletonCard,
   TourismCard,
   WildlifeCard,
 } from '@/components/ui';
-import { Colors, Spacing } from '@/constants/theme';
+import { LEWA_LANDSCAPE_URL } from '@/constants/imagery';
+import { Radius, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
+import { useTheme } from '@/hooks/use-theme';
 import { listAnnouncements } from '@/services/content';
 import { listActiveCampaigns } from '@/services/donations';
 import { listUpcomingEvents } from '@/services/events';
 import { listFeaturedTourism } from '@/services/tourism';
 import { listFeaturedWildlife } from '@/services/wildlife';
 
-const QUICK_ACTIONS: { label: string; icon: string; href: string }[] = [
-  { label: 'Book a tour', icon: 'binoculars.fill', href: '/(tabs)/explore?category=tourism' },
-  { label: 'Wildlife', icon: 'pawprint.fill', href: '/(tabs)/explore?category=wildlife' },
-  { label: 'Events', icon: 'calendar', href: '/(tabs)/explore?category=events' },
-  { label: 'Donate', icon: 'heart.fill', href: '/donations' },
+const IMPACT_STATS: { value: string; label: string }[] = [
+  { value: '62,000', label: 'acres of protected wilderness' },
+  { value: '14%', label: 'of Kenya’s rhino population' },
+  { value: '9,180+', label: 'children reached each year' },
+  { value: '2,160+', label: 'women in micro-enterprise' },
+  { value: '37,490+', label: 'patients across 4 clinics' },
+];
+
+const QUICK_ACTIONS: { label: string; icon: string; href: string; accessibilityLabel: string }[] = [
+  {
+    label: 'Tours',
+    icon: 'binoculars.fill',
+    href: '/(tabs)/explore?category=tourism',
+    accessibilityLabel: 'Book a tour',
+  },
+  {
+    label: 'Wildlife',
+    icon: 'pawprint.fill',
+    href: '/(tabs)/explore?category=wildlife',
+    accessibilityLabel: 'Wildlife',
+  },
+  {
+    label: 'Events',
+    icon: 'calendar',
+    href: '/(tabs)/explore?category=events',
+    accessibilityLabel: 'Events',
+  },
+  {
+    label: 'Donate',
+    icon: 'heart.fill',
+    href: '/donations',
+    accessibilityLabel: 'Donate',
+  },
 ];
 
 export default function HomeTab() {
+  const theme = useTheme();
+  const isFocused = useIsFocused();
   const wildlife = useQuery({ queryKey: ['wildlife', 'featured'], queryFn: listFeaturedWildlife });
   const tourism = useQuery({ queryKey: ['tourism', 'featured'], queryFn: listFeaturedTourism });
   const events = useQuery({ queryKey: ['events', 'upcoming'], queryFn: listUpcomingEvents });
   const campaigns = useQuery({ queryKey: ['donations', 'active'], queryFn: listActiveCampaigns });
-  const announcements = useQuery({ queryKey: ['announcements'], queryFn: () => listAnnouncements(2) });
-
-  const loading =
-    wildlife.isLoading || tourism.isLoading || events.isLoading || campaigns.isLoading || announcements.isLoading;
-  const error =
-    wildlife.error || tourism.error || events.error || campaigns.error || announcements.error;
+  const announcements = useQuery({ queryKey: ['announcements'], queryFn: () => listAnnouncements(3) });
+  const { refreshControl } = usePullToRefresh(
+    () =>
+      Promise.all([
+        wildlife.refetch(),
+        tourism.refetch(),
+        events.refetch(),
+        campaigns.refetch(),
+        announcements.refetch(),
+      ]),
+    { tintColor: '#FFFFFF' },
+  );
 
   return (
-    <View style={styles.root}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+    <View style={[styles.root, { backgroundColor: theme.background }]}>
+      {isFocused ? <StatusBar style="light" /> : null}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        refreshControl={refreshControl}
+      >
         <View style={styles.hero}>
           <ImageWithFallback
-            uri="https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=1400&q=80"
+            uri={LEWA_LANDSCAPE_URL}
             style={StyleSheet.absoluteFill}
             fallbackIcon="leaf.fill"
           />
@@ -60,8 +107,8 @@ export default function HomeTab() {
           />
           <SafeAreaView edges={['top']} style={styles.heroSafe}>
             <View style={styles.brandRow}>
-              <View style={styles.logoMark}>
-                <Icon name="leaf.fill" size={18} color={Colors.light.primaryDark} />
+              <View style={[styles.logoMark, { backgroundColor: theme.surface }]}>
+                <Icon name="leaf.fill" size={18} color={theme.primaryDark} />
               </View>
               <View>
                 <ThemedText type="overline" style={styles.brandKicker}>
@@ -72,72 +119,81 @@ export default function HomeTab() {
                 </ThemedText>
               </View>
             </View>
-            <View style={styles.heroCopy}>
-              <ThemedText type="display" style={styles.heroHeadline}>
-                Where wildlife{'\n'}thrives.
-              </ThemedText>
-              <ThemedText type="body" style={styles.heroSub}>
-                Book a safari, learn about the species we protect, and support conservation from
-                anywhere in the world.
-              </ThemedText>
+            <View style={styles.heroBottom}>
+              <View style={styles.heroCopy}>
+                <ThemedText type="display" style={styles.heroHeadline}>
+                  Where wildlife{'\n'}thrives.
+                </ThemedText>
+                <Button
+                  label="Book a safari"
+                  size="sm"
+                  onPress={() => router.push('/(tabs)/explore?category=tourism')}
+                />
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Search wildlife, tours, events"
+                accessibilityHint="Opens search"
+                onPress={() => router.push('/search')}
+              >
+                <View pointerEvents="none">
+                  <SearchBar
+                    editable={false}
+                    placeholder="Search wildlife, tours, events…"
+                    style={styles.heroSearch}
+                  />
+                </View>
+              </Pressable>
             </View>
           </SafeAreaView>
-        </View>
-
-        <View style={styles.searchWrap}>
-          <Pressable onPress={() => router.push('/search')}>
-            <View pointerEvents="none">
-              <SearchBar editable={false} placeholder="Search wildlife, tours, events…" />
-            </View>
-          </Pressable>
         </View>
 
         <View style={styles.quickActions}>
           {QUICK_ACTIONS.map((action) => (
             <Pressable
               key={action.label}
-              style={({ pressed }) => [
-                styles.quickAction,
-                {
-                  backgroundColor: Colors.light.surface,
-                  borderColor: Colors.light.border,
-                  opacity: pressed ? 0.9 : 1,
-                },
-              ]}
+              accessibilityRole="button"
+              accessibilityLabel={action.accessibilityLabel}
+              style={({ pressed }) => [styles.quickAction, { opacity: pressed ? 0.6 : 1 }]}
               onPress={() => router.push(action.href as never)}
             >
-              <View style={[styles.quickIcon, { backgroundColor: Colors.light.primaryLight }]}>
-                <Icon name={action.icon as never} size={18} color={Colors.light.primaryDark} />
-              </View>
-              <ThemedText type="caption">{action.label}</ThemedText>
+              <Icon name={action.icon as never} size={22} color={theme.primary} />
+              <ThemedText type="caption" numberOfLines={1} style={{ color: theme.text }}>
+                {action.label}
+              </ThemedText>
             </Pressable>
           ))}
         </View>
 
-        {loading ? <LoadingState label="Loading Lewa…" /> : null}
-        {error ? (
-          <ErrorState
-            title="Could not load home"
-            message={error instanceof Error ? error.message : 'Check your connection and try again.'}
-            onRetry={() => {
-              void wildlife.refetch();
-              void tourism.refetch();
-              void events.refetch();
-              void campaigns.refetch();
-              void announcements.refetch();
-            }}
-          />
-        ) : null}
+        <View style={styles.impactSection}>
+          <SectionHeader title="Our impact" />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.impactList}
+          >
+            {IMPACT_STATS.map((stat) => (
+              <View
+                key={stat.value}
+                accessibilityLabel={`${stat.value} ${stat.label}`}
+                style={[styles.impactCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+              >
+                <ThemedText type="h2">{stat.value}</ThemedText>
+                <ThemedText type="caption" themeColor="textSecondary">
+                  {stat.label}
+                </ThemedText>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <SectionHeader
-              title="Featured wildlife"
-              subtitle="Species you can find at Lewa"
-              actionLabel="See all"
-              onAction={() => router.push('/(tabs)/explore?category=wildlife')}
-            />
-          </View>
+        <HomeFeedSection
+          title="Featured wildlife"
+          actionLabel="See all"
+          onAction={() => router.push('/(tabs)/explore?category=wildlife')}
+          query={wildlife}
+          skeleton={{ count: 3, width: 200, height: 250 }}
+        >
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hList}>
             {(wildlife.data ?? []).map((w) => (
               <WildlifeCard
@@ -151,17 +207,15 @@ export default function HomeTab() {
               />
             ))}
           </ScrollView>
-        </View>
+        </HomeFeedSection>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <SectionHeader
-              title="Popular experiences"
-              subtitle="Guided by Lewa specialists"
-              actionLabel="See all"
-              onAction={() => router.push('/(tabs)/explore?category=tourism')}
-            />
-          </View>
+        <HomeFeedSection
+          title="Popular experiences"
+          actionLabel="See all"
+          onAction={() => router.push('/(tabs)/explore?category=tourism')}
+          query={tourism}
+          skeleton={{ count: 2, width: 260, height: 220 }}
+        >
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hList}>
             {(tourism.data ?? []).map((t) => (
               <TourismCard
@@ -177,53 +231,62 @@ export default function HomeTab() {
               />
             ))}
           </ScrollView>
-        </View>
+        </HomeFeedSection>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <SectionHeader
-              title="Upcoming events"
-              actionLabel="See all"
-              onAction={() => router.push('/(tabs)/explore?category=events')}
-            />
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hList}>
+        <HomeFeedSection
+          title="Upcoming events"
+          actionLabel="See all"
+          onAction={() => router.push('/(tabs)/explore?category=events')}
+          query={events}
+          isEmpty={(events.data ?? []).slice(0, 3).length === 0}
+          layout="stack"
+          skeleton={{ count: 2, width: '100%', height: 88 }}
+        >
+          <View style={styles.stackList}>
             {(events.data ?? []).slice(0, 3).map((e) => (
               <EventCard
                 key={e.id}
                 title={e.title}
                 isoDate={e.startAt}
                 location={e.location ?? 'Lewa'}
-                imageUrl={e.imageUrl}
+                variant="row"
+                bordered={false}
                 onPress={() => router.push(`/events/${e.id}`)}
               />
             ))}
-          </ScrollView>
-        </View>
+          </View>
+        </HomeFeedSection>
 
-        {(campaigns.data ?? []).slice(0, 1).map((c) => (
-          <View key={c.id} style={styles.sectionPadded}>
-            <SectionHeader
-              title="Support conservation"
-              subtitle="Your donation goes directly to the field"
-              actionLabel="All campaigns"
-              onAction={() => router.push('/donations')}
-            />
+        <HomeFeedSection
+          title="Support conservation"
+          actionLabel="All campaigns"
+          onAction={() => router.push('/donations')}
+          query={campaigns}
+          isEmpty={(campaigns.data ?? []).slice(0, 1).length === 0}
+          layout="stack"
+          skeleton={{ count: 1, width: '100%', height: 180 }}
+        >
+          {(campaigns.data ?? []).slice(0, 1).map((c) => (
             <DonationCard
+              key={c.id}
               title={c.title}
-              summary={c.summary}
               imageUrl={c.coverImage}
               goal={c.goalAmount}
               raised={c.amountRaised}
               currency={c.currency}
+              variant="band"
               onPress={() => router.push(`/donations/${c.id}`)}
             />
-          </View>
-        ))}
+          ))}
+        </HomeFeedSection>
 
-        <View style={styles.sectionPadded}>
-          <SectionHeader title="Latest updates" subtitle="News from the field" />
-          <View style={{ gap: Spacing.md }}>
+        <HomeFeedSection
+          title="Latest updates"
+          query={announcements}
+          layout="stack"
+          skeleton={{ count: 2, width: '100%', height: 56 }}
+        >
+          <View style={styles.stackList}>
             {(announcements.data ?? []).map((a) => (
               <AnnouncementCard
                 key={a.id}
@@ -231,54 +294,153 @@ export default function HomeTab() {
                 body={a.body}
                 isoDate={a.publishAt}
                 tone={a.tone}
+                variant="row"
               />
             ))}
           </View>
-        </View>
+        </HomeFeedSection>
       </ScrollView>
     </View>
   );
 }
 
+function HomeFeedSection<T>({
+  title,
+  subtitle,
+  actionLabel,
+  onAction,
+  query,
+  isEmpty,
+  layout = 'carousel',
+  skeleton,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  query: UseQueryResult<T[]>;
+  isEmpty?: boolean;
+  layout?: 'carousel' | 'stack';
+  skeleton: { count: number; width: number | `${number}%`; height: number };
+  children: ReactNode;
+}) {
+  const empty = isEmpty ?? (query.data ?? []).length === 0;
+  if (!query.isLoading && !query.isError && empty) return null;
+
+  const stacked = layout === 'stack';
+
+  return (
+    <View style={stacked ? styles.sectionPadded : styles.section}>
+      <View style={stacked ? undefined : styles.sectionHeader}>
+        <SectionHeader title={title} subtitle={subtitle} actionLabel={actionLabel} onAction={onAction} />
+      </View>
+      {query.isLoading ? (
+        <SectionSkeletons title={title} layout={layout} skeleton={skeleton} />
+      ) : query.isError ? (
+        <View style={stacked ? undefined : styles.sectionHeader}>
+          <ErrorState
+            title={`Could not load ${title.toLowerCase()}`}
+            message={query.error instanceof Error ? query.error.message : 'Check your connection and try again.'}
+            onRetry={() => {
+              void query.refetch();
+            }}
+            style={styles.sectionError}
+          />
+        </View>
+      ) : (
+        children
+      )}
+    </View>
+  );
+}
+
+function SectionSkeletons({
+  title,
+  layout,
+  skeleton,
+}: {
+  title: string;
+  layout: 'carousel' | 'stack';
+  skeleton: { count: number; width: number | `${number}%`; height: number };
+}) {
+  const cards = Array.from({ length: skeleton.count }, (_, index) => (
+    <SkeletonCard key={index} style={{ width: skeleton.width, height: skeleton.height }} />
+  ));
+
+  const a11y = {
+    accessibilityLabel: `Loading ${title}`,
+    accessibilityState: { busy: true as const },
+  };
+
+  if (layout === 'carousel') {
+    return (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.hList}
+        {...a11y}
+      >
+        {cards}
+      </ScrollView>
+    );
+  }
+
+  return (
+    <View style={styles.stackList} {...a11y}>
+      {cards}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.light.background },
-  scroll: { paddingBottom: Spacing.huge },
-  hero: { height: 420, overflow: 'hidden' },
+  root: { flex: 1 },
+  scroll: { paddingBottom: Spacing.huge, flexGrow: 1 },
+  hero: { height: 360, overflow: 'hidden' },
   heroSafe: { flex: 1, padding: Spacing.xxl, justifyContent: 'space-between' },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   logoMark: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.9)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   brand: { color: '#F5F1E8', letterSpacing: 4, textTransform: 'uppercase' },
   brandKicker: { color: 'rgba(245, 241, 232, 0.85)', letterSpacing: 2 },
+  heroBottom: { gap: Spacing.lg },
   heroCopy: { gap: Spacing.md, maxWidth: 460 },
-  heroHeadline: { color: '#FFFFFF', fontSize: 42, lineHeight: 46 },
-  heroSub: { color: 'rgba(255,255,255,0.9)' },
-  searchWrap: { paddingHorizontal: Spacing.xl, marginTop: -Spacing.xxl },
+  heroHeadline: { color: '#FFFFFF' },
+  heroSearch: {
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderColor: 'transparent',
+  },
   quickActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: Spacing.sm,
+    gap: Spacing.lg,
     paddingHorizontal: Spacing.xl,
     marginTop: Spacing.xl,
   },
   quickAction: {
     flex: 1,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.sm,
-    borderRadius: 16,
-    borderWidth: 1,
     alignItems: 'center',
     gap: Spacing.sm,
+    paddingVertical: Spacing.sm,
   },
-  quickIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  section: { marginTop: Spacing.xxl, gap: Spacing.lg },
+  impactSection: { marginTop: Spacing.huge, gap: Spacing.lg },
+  impactList: { paddingHorizontal: Spacing.xl, gap: Spacing.md },
+  impactCard: {
+    width: 168,
+    borderRadius: Radius.large,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: Spacing.lg,
+    gap: Spacing.xs,
+  },
+  section: { marginTop: Spacing.huge, gap: Spacing.lg },
   sectionHeader: { paddingHorizontal: Spacing.xl },
-  sectionPadded: { marginTop: Spacing.xxl, gap: Spacing.lg, paddingHorizontal: Spacing.xl },
+  sectionPadded: { marginTop: Spacing.huge, gap: Spacing.lg, paddingHorizontal: Spacing.xl },
+  sectionError: { paddingVertical: Spacing.lg, paddingHorizontal: Spacing.md },
   hList: { paddingHorizontal: Spacing.xl, gap: Spacing.md },
+  stackList: { gap: Spacing.sm },
 });

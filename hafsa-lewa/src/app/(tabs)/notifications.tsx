@@ -1,16 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { EmptyState, ErrorState, FilterChip, LoadingState, NotificationItem } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useAuth } from '@/lib/auth-context';
 import { listNotifications, markNotificationRead } from '@/services/notifications';
 import type { AppNotification } from '@/services/types';
-import { resolveNotificationDestination } from '@/utils/notification-destination';
+import { openNotificationTarget } from '@/utils/open-notification';
 
 type Filter = 'all' | 'unread';
 
@@ -44,6 +45,8 @@ export default function NotificationsTab() {
     },
   });
 
+  const refreshNotifications = useCallback(() => refetch(), [refetch]);
+  const { refreshControl } = usePullToRefresh(refreshNotifications);
   const items = filter === 'unread' ? data.filter((n) => !n.readAt) : data;
   const grouped = useMemo(() => groupNotifications(items, Date.now()), [items]);
 
@@ -66,7 +69,11 @@ export default function NotificationsTab() {
         </View>
       </SafeAreaView>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+        refreshControl={refreshControl}
+      >
         {isLoading ? <LoadingState /> : null}
         {error ? <ErrorState message={(error as Error).message} onRetry={() => refetch()} /> : null}
         {!isLoading && items.length === 0 ? (
@@ -87,8 +94,7 @@ export default function NotificationsTab() {
                   unread={!n.readAt}
                   onPress={() => {
                     if (!n.readAt) markRead.mutate(n.id);
-                    const destination = resolveNotificationDestination(n);
-                    if (destination) router.push(destination as never);
+                    void openNotificationTarget(n);
                   }}
                 />
               ))}
@@ -105,5 +111,5 @@ const styles = StyleSheet.create({
   header: { padding: Spacing.xl, gap: Spacing.md },
   filters: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginTop: Spacing.xs },
   settingsLink: { paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md },
-  content: { padding: Spacing.xl, paddingBottom: Spacing.huge, gap: Spacing.xl },
+  content: { padding: Spacing.xl, paddingBottom: Spacing.huge, gap: Spacing.xl, flexGrow: 1 },
 });

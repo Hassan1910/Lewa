@@ -1,11 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
+import { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { EmptyState, ErrorState, Icon, LoadingState } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useAuth } from '@/lib/auth-context';
 import { listMyPayments } from '@/services/payments';
 import { formatCurrency, formatDate } from '@/utils/format';
@@ -17,6 +19,8 @@ export default function PaymentsScreen() {
     queryFn: () => listMyPayments(session!.user.id),
     enabled: Boolean(session?.user.id),
   });
+  const refreshPayments = useCallback(() => refetch(), [refetch]);
+  const { refreshControl } = usePullToRefresh(refreshPayments);
 
   return (
     <View style={styles.root}>
@@ -30,7 +34,7 @@ export default function PaymentsScreen() {
           Paystack receipts in Kenyan Shillings.
         </ThemedText>
       </SafeAreaView>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} refreshControl={refreshControl}>
         {!session ? (
           <EmptyState
             icon="creditcard.fill"
@@ -66,7 +70,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.light.background },
   header: { padding: Spacing.xl, gap: Spacing.sm },
   back: { width: 32, height: 32, justifyContent: 'center' },
-  content: { padding: Spacing.xl, gap: Spacing.md, paddingBottom: Spacing.huge },
+  content: { padding: Spacing.xl, gap: Spacing.md, paddingBottom: Spacing.huge, flexGrow: 1 },
   card: {
     padding: Spacing.lg,
     borderRadius: Radius.large,

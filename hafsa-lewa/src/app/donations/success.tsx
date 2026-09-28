@@ -5,12 +5,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { Button, Icon } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
+import { openDonationRecord, searchParam } from '@/lib/record-navigation';
 import { formatCurrency } from '@/utils/format';
 
 export default function DonationSuccessScreen() {
-  const params = useLocalSearchParams<{ amount?: string; campaign?: string; status?: string }>();
-  const amount = Number(params.amount ?? 0);
-  const paid = params.status === 'success';
+  const raw = useLocalSearchParams();
+  const donationId = searchParam(raw.donationId);
+  const amountValue = searchParam(raw.amount);
+  const campaign = searchParam(raw.campaign);
+  const status = searchParam(raw.status);
+  const amount = Number(amountValue ?? 0);
+  const paid = status === 'success';
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -27,12 +32,19 @@ export default function DonationSuccessScreen() {
         </ThemedText>
         <ThemedText type="body" themeColor="textSecondary" style={styles.center}>
           {paid
-            ? `Your gift to “${params.campaign ?? 'Lewa'}” is verified and will be counted toward the campaign.`
+            ? `Your gift to “${campaign ?? 'Lewa'}” is verified and will be counted toward the campaign.`
             : `If you completed Paystack checkout, confirmation can take a moment. Check Payments for the latest status.`}
         </ThemedText>
       </View>
       <View style={styles.footer}>
-        <Button label="Back to donations" fullWidth onPress={() => router.replace('/donations')} />
+        {donationId ? (
+          <Button label="View my donation" fullWidth onPress={() => openDonationRecord(donationId, 'replace')} />
+        ) : (
+          <ThemedText type="body" themeColor="textSecondary" style={styles.center}>
+            This confirmation has no donation to open.
+          </ThemedText>
+        )}
+        <Button label="Back to donations" variant="secondary" fullWidth onPress={() => router.replace('/donations')} />
         <Button
           label="Back to home"
           variant="tertiary"

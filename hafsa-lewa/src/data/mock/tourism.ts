@@ -49,9 +49,9 @@ export const TOURISM: TourismService[] = [
     id: 'rhino-tracking-walk',
     title: 'Rhino Tracking Walk',
     category: 'Conservation Activity',
-    imageUrl: 'https://images.unsplash.com/photo-1567859667906-bafa2c14b4f2?auto=format&fit=crop&w=1200&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?auto=format&fit=crop&w=1200&q=80',
     heroImageUrl:
-      'https://images.unsplash.com/photo-1567859667906-bafa2c14b4f2?auto=format&fit=crop&w=1600&q=80',
+      'https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?auto=format&fit=crop&w=1600&q=80',
     priceUSD: 220,
     durationLabel: '4 hrs',
     featured: true,

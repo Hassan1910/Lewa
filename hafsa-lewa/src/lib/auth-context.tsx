@@ -1,5 +1,6 @@
 import type { Session, User } from '@supabase/supabase-js';
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import * as Linking from 'expo-linking';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { supabase } from '@/lib/supabase';
 
@@ -27,6 +28,8 @@ type AuthContextValue = {
   session: Session | null;
   user: User | null;
   profile: Profile | null;
+  accountNotice: string | null;
+  clearAccountNotice: () => void;
   isStaff: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ hasSession: boolean }>;
@@ -35,12 +38,69 @@ type AuthContextValue = {
   refreshProfile: () => Promise<void>;
 };
 
+export class AccountDisabledError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'AccountDisabledError';
+  }
+}
+
+function inactiveAccountMessage(status: Profile['status']): string | null {
+  if (status === 'suspended') {
+    return 'This account is suspended. You have been signed out.';
+  }
+  if (status === 'archived') {
+    return 'This account is archived and can no longer sign in.';
+  }
+  return null;
+}
+
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [accountNotice, setAccountNotice] = useState<string | null>(null);
+  const rejectInflight = useRef<Promise<void> | null>(null);
+  const clearAccountNotice = useCallback(() => setAccountNotice(null), []);
+
+  const rejectInactiveAccount = useCallback(async (status: Profile['status']) => {
+    const message = inactiveAccountMessage(status);
+    if (!message) return false;
+    setAccountNotice(message);
+    setProfile(null);
+    if (!rejectInflight.current) {
+      rejectInflight.current = supabase.auth.signOut().then(({ error }) => {
+        rejectInflight.current = null;
+        if (error) {
+          // eslint-disable-next-line no-console
+          console.warn('[Lewa] Failed to sign out a disabled account', error.message);
+        }
+      });
+    }
+    await rejectInflight.current;
+    return true;
+  }, []);
+
+  const hydrateProfile = useCallback(
+    async (userId: string) => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, phone, avatar_url, role, status')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error) {
+        // eslint-disable-next-line no-console
+        console.warn('[Lewa] Failed to load profile', error.message);
+        return;
+      }
+      const row = data as Profile | null;
+      if (row && (await rejectInactiveAccount(row.status))) return;
+      setProfile(row);
+    },
+    [rejectInactiveAccount],
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -71,21 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false;
       sub.subscription.unsubscribe();
     };
-  }, []);
-
-  const hydrateProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, full_name, email, phone, avatar_url, role, status')
-      .eq('id', userId)
-      .maybeSingle();
-    if (error) {
-      // eslint-disable-next-line no-console
-      console.warn('[Lewa] Failed to load profile', error.message);
-      return;
-    }
-    setProfile(data as Profile | null);
-  };
+  }, [hydrateProfile]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -93,13 +139,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       user: session?.user ?? null,
       profile,
+      accountNotice,
+      clearAccountNotice,
       isStaff:
-        profile?.role === 'staff' ||
-        profile?.role === 'administrator' ||
-        profile?.role === 'super_admin',
+        profile?.status === 'active' &&
+        (profile.role === 'staff' ||
+          profile.role === 'administrator' ||
+          profile.role === 'super_admin'),
       signIn: async (email, password) => {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
+        if (!data.user) return;
+        const { data: row, error: profileError } = await supabase
+          .from('profiles')
+          .select('status')
+          .eq('id', data.user.id)
+          .maybeSingle();
+        if (profileError) throw profileError;
+        const status = row?.status as Profile['status'] | undefined;
+        if (status && (await rejectInactiveAccount(status))) {
+          throw new AccountDisabledError(inactiveAccountMessage(status) ?? 'This account cannot sign in.');
+        }
       },
       signUp: async (email, password, fullName) => {
         const { data, error } = await supabase.auth.signUp({
@@ -117,14 +177,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
       },
       resetPassword: async (email) => {
-        const { error } = await supabase.auth.resetPasswordForEmail(email);
+        const redirectTo = Linking.createURL('/reset-password');
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
         if (error) throw error;
       },
       refreshProfile: async () => {
         if (session?.user) await hydrateProfile(session.user.id);
       },
     }),
-    [loading, session, profile],
+    [loading, session, profile, accountNotice, clearAccountNotice, rejectInactiveAccount, hydrateProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

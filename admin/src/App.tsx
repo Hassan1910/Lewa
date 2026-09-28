@@ -7,18 +7,17 @@ import {
   Badge,
   Button,
   Card,
-  CheckField,
   DataTable,
   EmptyRow,
   Field,
   FormCard,
   humanize,
-  SectionHeading,
   SelectField,
   StatCard,
   StatusSelect,
   TextArea,
 } from './components/ui';
+import { ContentPage, DonationsPage, EventsPage, SimpleContent, TourismPage, WildlifePage } from './content-admin';
 import { useAuth, type Role } from './lib/auth';
 import { formatCurrency, formatDate } from './lib/format';
 import { supabase } from './lib/supabase';
@@ -69,9 +68,9 @@ export function App() {
         <Route path="/tourism" element={<TourismPage />} />
         <Route path="/bookings" element={<BookingsPage />} />
         <Route path="/events" element={<EventsPage />} />
-        <Route path="/conservation" element={<SimpleContent table="conservation_programs" title="Conservation" />} />
-        <Route path="/education" element={<SimpleContent table="education_resources" title="Education" extra={['category', 'reading_minutes']} />} />
-        <Route path="/community" element={<SimpleContent table="community_programs" title="Community" extra={['location']} />} />
+        <Route path="/conservation" element={<SimpleContent table="conservation_programs" title="Conservation" imageBucket="content" />} />
+        <Route path="/education" element={<SimpleContent table="education_resources" title="Education" extra={['category', 'reading_minutes']} imageBucket="content" />} />
+        <Route path="/community" element={<SimpleContent table="community_programs" title="Community" extra={['location']} imageBucket="content" />} />
         <Route path="/donations" element={<DonationsPage />} />
         <Route path="/payments" element={<AdminOnly><PaymentsPage /></AdminOnly>} />
         <Route path="/notifications" element={<NotificationsPage />} />
@@ -329,7 +328,22 @@ function UsersPage() {
                   value={r.status}
                   options={['active', 'suspended', 'archived']}
                   onChange={async (status) => {
-                    await supabase.from('profiles').update({ status }).eq('id', r.id);
+                    const { data, error } = await supabase.functions.invoke('admin-set-account-status', {
+                      body: { userId: r.id, status },
+                    });
+                    if (error || data?.error) {
+                      let message = data?.error ? String(data.error) : error?.message ?? 'Could not update account status';
+                      const context = (error as { context?: { json?: () => Promise<{ error?: string }> } } | null)?.context;
+                      if (context?.json) {
+                        try {
+                          const body = await context.json();
+                          if (body?.error) message = body.error;
+                        } catch {
+                          /* keep the client message */
+                        }
+                      }
+                      window.alert(message);
+                    }
                     void reload();
                   }}
                 />
@@ -342,119 +356,6 @@ function UsersPage() {
   );
 }
 
-function WildlifePage() {
-  const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
-  const [form, setForm] = useState({ id: '', name: '', scientific_name: '', category: 'Mammals', conservation_status: 'Endangered', description: '', image_url: '', featured: false });
-  const reload = async () => {
-    const { data } = await supabase.from('wildlife_species').select('*').order('name');
-    setRows(data ?? []);
-  };
-  useEffect(() => { void reload(); }, []);
-  return (
-    <section>
-      <FormCard
-        onSubmit={async (e) => {
-          e.preventDefault();
-          await supabase.from('wildlife_species').upsert({
-            ...form,
-            id: form.id || form.name.toLowerCase().replace(/\s+/g, '-'),
-            status: 'published',
-          });
-          setForm({ id: '', name: '', scientific_name: '', category: 'Mammals', conservation_status: 'Endangered', description: '', image_url: '', featured: false });
-          void reload();
-        }}
-      >
-        <Field label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-        <Field label="Scientific name" value={form.scientific_name} onChange={(e) => setForm({ ...form, scientific_name: e.target.value })} />
-        <Field label="Category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
-        <Field label="Conservation status" value={form.conservation_status} onChange={(e) => setForm({ ...form, conservation_status: e.target.value })} />
-        <Field className="sm:col-span-2" label="Image URL" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} />
-        <TextArea className="sm:col-span-2" label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-        <CheckField label="Featured" checked={form.featured} onChange={(e) => setForm({ ...form, featured: e.target.checked })} />
-        <div className="flex items-end">
-          <Button type="submit">Save species</Button>
-        </div>
-      </FormCard>
-      <DataTable>
-        <thead><tr><th>Name</th><th>Category</th><th>Status</th><th>Featured</th><th /></tr></thead>
-        <tbody>
-          {rows.length === 0 ? <EmptyRow colSpan={5} label="No species yet." /> : rows.map((r) => (
-            <tr key={String(r.id)}>
-              <td className="font-medium">{String(r.name)}</td>
-              <td>{String(r.category)}</td>
-              <td><Badge value={String(r.conservation_status ?? '')} /></td>
-              <td><Badge value={r.featured ? 'yes' : 'no'} /></td>
-              <td>
-                <Button type="button" tone="danger" className="px-3 py-1.5" onClick={async () => { await supabase.from('wildlife_species').delete().eq('id', r.id); void reload(); }}>Delete</Button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </DataTable>
-    </section>
-  );
-}
-
-function TourismPage() {
-  const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
-  const [form, setForm] = useState({ id: '', title: '', category: 'Safari', price: '18000', duration_label: '3 hrs', capacity: '6', summary: '', pricing_unit: 'per_guest' });
-  const reload = async () => {
-    const { data } = await supabase.from('tourism_services').select('*').order('title');
-    setRows(data ?? []);
-  };
-  useEffect(() => { void reload(); }, []);
-  return (
-    <section>
-      <FormCard
-        onSubmit={async (e) => {
-          e.preventDefault();
-          await supabase.from('tourism_services').upsert({
-            id: form.id || form.title.toLowerCase().replace(/\s+/g, '-'),
-            title: form.title,
-            category: form.category,
-            service_type: form.category,
-            price: Number(form.price),
-            currency: 'KES',
-            duration_label: form.duration_label,
-            capacity: Number(form.capacity),
-            summary: form.summary,
-            pricing_unit: form.pricing_unit,
-            status: 'published',
-          });
-          void reload();
-        }}
-      >
-        <Field label="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-        <Field label="Category / service type" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
-        <Field label="Price (KSh)" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
-        <Field label="Duration" value={form.duration_label} onChange={(e) => setForm({ ...form, duration_label: e.target.value })} />
-        <Field label="Capacity" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
-        <SelectField label="Pricing" value={form.pricing_unit} onChange={(e) => setForm({ ...form, pricing_unit: e.target.value })}>
-          <option value="per_guest">per guest</option>
-          <option value="per_booking">per booking (accommodation)</option>
-        </SelectField>
-        <TextArea className="sm:col-span-2" label="Summary" value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
-        <div className="sm:col-span-2">
-          <Button type="submit">Save service</Button>
-        </div>
-      </FormCard>
-      <DataTable>
-        <thead><tr><th>Title</th><th>Type</th><th>Price</th><th>Capacity</th><th /></tr></thead>
-        <tbody>
-          {rows.length === 0 ? <EmptyRow colSpan={5} label="No services yet." /> : rows.map((r) => (
-            <tr key={String(r.id)}>
-              <td className="font-medium">{String(r.title)}</td>
-              <td>{String(r.category)}</td>
-              <td>{formatCurrency(Number(r.price), String(r.currency ?? 'KES'))}</td>
-              <td>{String(r.capacity)}</td>
-              <td><Button type="button" tone="danger" className="px-3 py-1.5" onClick={async () => { await supabase.from('tourism_services').delete().eq('id', r.id); void reload(); }}>Delete</Button></td>
-            </tr>
-          ))}
-        </tbody>
-      </DataTable>
-    </section>
-  );
-}
 
 function BookingsPage() {
   const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
@@ -488,140 +389,6 @@ function BookingsPage() {
   );
 }
 
-function EventsPage() {
-  const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
-  const [form, setForm] = useState({ title: '', location: '', start_at: '', registration_required: true });
-  const reload = async () => {
-    const { data } = await supabase.from('events').select('*').order('start_at');
-    setRows(data ?? []);
-  };
-  useEffect(() => { void reload(); }, []);
-  return (
-    <section>
-      <FormCard onSubmit={async (e) => {
-        e.preventDefault();
-        await supabase.from('events').insert({
-          id: form.title.toLowerCase().replace(/\s+/g, '-'),
-          title: form.title,
-          location: form.location,
-          start_at: form.start_at,
-          registration_required: form.registration_required,
-          status: 'published',
-        });
-        void reload();
-      }}>
-        <Field label="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-        <Field label="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-        <Field label="Starts" type="datetime-local" value={form.start_at} onChange={(e) => setForm({ ...form, start_at: e.target.value })} required />
-        <CheckField label="Registration required" checked={form.registration_required} onChange={(e) => setForm({ ...form, registration_required: e.target.checked })} />
-        <div className="sm:col-span-2">
-          <Button type="submit">Create event</Button>
-        </div>
-      </FormCard>
-      <DataTable>
-        <thead><tr><th>Title</th><th>When</th><th>Location</th><th /></tr></thead>
-        <tbody>
-          {rows.length === 0 ? <EmptyRow colSpan={4} label="No events yet." /> : rows.map((r) => (
-            <tr key={String(r.id)}>
-              <td className="font-medium">{String(r.title)}</td>
-              <td>{formatDate(String(r.start_at))}</td>
-              <td>{String(r.location ?? '')}</td>
-              <td><Button type="button" tone="danger" className="px-3 py-1.5" onClick={async () => { await supabase.from('events').delete().eq('id', r.id); void reload(); }}>Delete</Button></td>
-            </tr>
-          ))}
-        </tbody>
-      </DataTable>
-    </section>
-  );
-}
-
-function SimpleContent({ table, title, extra = [] }: { table: string; title: string; extra?: string[] }) {
-  const [rows, setRows] = useState<Array<Record<string, unknown>>>([]);
-  const [form, setForm] = useState({ title: '', summary: '' });
-  const reload = async () => {
-    const { data } = await supabase.from(table).select('*').order('title');
-    setRows(data ?? []);
-  };
-  useEffect(() => { void reload(); }, [table]);
-  return (
-    <section>
-      <FormCard
-        columns={1}
-        title={`Add ${title.toLowerCase()}`}
-        onSubmit={async (e) => {
-          e.preventDefault();
-          await supabase.from(table).insert({ id: form.title.toLowerCase().replace(/\s+/g, '-'), title: form.title, summary: form.summary, status: 'published' });
-          setForm({ title: '', summary: '' });
-          void reload();
-        }}
-      >
-        <Field label="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-        <TextArea label="Summary" value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
-        <div>
-          <Button type="submit">Add</Button>
-        </div>
-      </FormCard>
-      <DataTable>
-        <thead><tr><th>Title</th><th>Summary</th>{extra.map((c) => <th key={c} className="capitalize">{humanize(c)}</th>)}<th /></tr></thead>
-        <tbody>
-          {rows.length === 0 ? <EmptyRow colSpan={3 + extra.length} label={`No ${title.toLowerCase()} yet.`} /> : rows.map((r) => (
-            <tr key={String(r.id)}>
-              <td className="font-medium">{String(r.title)}</td>
-              <td>{String(r.summary ?? '')}</td>
-              {extra.map((c) => <td key={c}>{String(r[c] ?? '')}</td>)}
-              <td><Button type="button" tone="danger" className="px-3 py-1.5" onClick={async () => { await supabase.from(table).delete().eq('id', r.id); void reload(); }}>Delete</Button></td>
-            </tr>
-          ))}
-        </tbody>
-      </DataTable>
-    </section>
-  );
-}
-
-function DonationsPage() {
-  const [campaigns, setCampaigns] = useState<Array<Record<string, unknown>>>([]);
-  const [gifts, setGifts] = useState<Array<Record<string, unknown>>>([]);
-  useEffect(() => {
-    void supabase.from('donation_campaigns').select('*').then(({ data }) => setCampaigns(data ?? []));
-    void supabase.from('donations').select('*').order('created_at', { ascending: false }).then(({ data }) => setGifts(data ?? []));
-  }, []);
-  return (
-    <section className="space-y-8">
-      <div>
-        <SectionHeading title="Campaigns" />
-        <DataTable>
-          <thead><tr><th>Title</th><th>Raised</th><th>Goal</th><th>Active</th></tr></thead>
-          <tbody>
-            {campaigns.length === 0 ? <EmptyRow colSpan={4} label="No campaigns yet." /> : campaigns.map((c) => (
-              <tr key={String(c.id)}>
-                <td className="font-medium">{String(c.title)}</td>
-                <td>{formatCurrency(Number(c.amount_raised), String(c.currency))}</td>
-                <td>{formatCurrency(Number(c.goal_amount), String(c.currency))}</td>
-                <td><Badge value={c.active ? 'yes' : 'no'} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </DataTable>
-      </div>
-      <div>
-        <SectionHeading title="Individual gifts" />
-        <DataTable>
-          <thead><tr><th>Amount</th><th>Status</th><th>Donor</th><th>When</th></tr></thead>
-          <tbody>
-            {gifts.length === 0 ? <EmptyRow colSpan={4} label="No gifts yet." /> : gifts.map((g) => (
-              <tr key={String(g.id)}>
-                <td className="font-medium">{formatCurrency(Number(g.amount), String(g.currency))}</td>
-                <td><Badge value={String(g.status)} /></td>
-                <td>{String(g.donor_name ?? g.donor_email ?? '—')}</td>
-                <td>{formatDate(String(g.created_at))}</td>
-              </tr>
-            ))}
-          </tbody>
-        </DataTable>
-      </div>
-    </section>
-  );
-}
 
 function NotificationsPage() {
   const [title, setTitle] = useState('');
@@ -711,61 +478,6 @@ function FeedbackPage() {
         ))}
       </tbody>
     </DataTable>
-  );
-}
-
-function ContentPage() {
-  const [faqs, setFaqs] = useState<Array<Record<string, unknown>>>([]);
-  const [ann, setAnn] = useState<Array<Record<string, unknown>>>([]);
-  const [about, setAbout] = useState<Array<Record<string, unknown>>>([]);
-  const reload = async () => {
-    const [f, a, ab] = await Promise.all([
-      supabase.from('faqs').select('*').order('sort_order'),
-      supabase.from('announcements').select('*').order('publish_at', { ascending: false }),
-      supabase.from('about_content').select('*').order('sort_order'),
-    ]);
-    setFaqs(f.data ?? []);
-    setAnn(a.data ?? []);
-    setAbout(ab.data ?? []);
-  };
-  useEffect(() => { void reload(); }, []);
-  return (
-    <section className="space-y-8">
-      <div>
-        <SectionHeading title="FAQs" />
-        <DataTable>
-          <thead><tr><th>Question</th><th>Answer</th></tr></thead>
-          <tbody>
-            {faqs.length === 0 ? <EmptyRow colSpan={2} label="No FAQs yet." /> : faqs.map((f) => (
-              <tr key={String(f.id)}><td className="font-medium">{String(f.question)}</td><td className="whitespace-normal text-stone-600">{String(f.answer)}</td></tr>
-            ))}
-          </tbody>
-        </DataTable>
-      </div>
-      <div>
-        <SectionHeading title="Announcements" />
-        <DataTable>
-          <thead><tr><th>Title</th><th>Tone</th></tr></thead>
-          <tbody>
-            {ann.length === 0 ? <EmptyRow colSpan={2} label="No announcements yet." /> : ann.map((a) => (
-              <tr key={String(a.id)}><td className="font-medium">{String(a.title)}</td><td><Badge value={String(a.tone)} /></td></tr>
-            ))}
-          </tbody>
-        </DataTable>
-      </div>
-      <div>
-        <SectionHeading title="About" />
-        <div className="space-y-3">
-          {about.length === 0 ? (
-            <Card bodyClassName="px-5 py-10 text-center text-sm text-stone-500">No about sections yet.</Card>
-          ) : about.map((s) => (
-            <Card key={String(s.key)} title={String(s.title)} bodyClassName="p-5">
-              <TextArea defaultValue={String(s.body)} onBlur={async (e) => { await supabase.from('about_content').update({ body: e.target.value }).eq('key', s.key); }} />
-            </Card>
-          ))}
-        </div>
-      </div>
-    </section>
   );
 }
 

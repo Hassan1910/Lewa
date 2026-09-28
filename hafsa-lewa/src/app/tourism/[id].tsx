@@ -1,26 +1,31 @@
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button, EmptyState, ErrorState, Icon, ImageWithFallback, LoadingState, SectionHeader, StatusBadge, StickyActionBar, stickyActionBarScrollPadding, useStickyActionBarInset } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { authHref } from '@/lib/auth-redirect';
 import { useAuth } from '@/lib/auth-context';
 import { getTourismById, getTourismPriceCaption } from '@/services/tourism';
 import { formatCurrency } from '@/utils/format';
+import { shareLewaItem } from '@/utils/share';
 
 export default function TourismDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuth();
   const bottomInset = useStickyActionBarInset();
-  const { data: service, isLoading, error } = useQuery({
+  const { data: service, isLoading, error, refetch } = useQuery({
     queryKey: ['tourism', id],
     queryFn: () => getTourismById(id!),
     enabled: Boolean(id),
   });
+  const refreshService = useCallback(() => refetch(), [refetch]);
+  const { refreshControl } = usePullToRefresh(refreshService, { tintColor: '#FFFFFF' });
 
   if (isLoading) {
     return (
@@ -58,7 +63,8 @@ export default function TourismDetailScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: stickyActionBarScrollPadding(bottomInset) }}
+        contentContainerStyle={{ paddingBottom: stickyActionBarScrollPadding(bottomInset), flexGrow: 1 }}
+        refreshControl={refreshControl}
       >
         <View style={styles.hero}>
           <ImageWithFallback
@@ -72,9 +78,19 @@ export default function TourismDetailScreen() {
             style={StyleSheet.absoluteFill}
           />
           <SafeAreaView edges={['top']} style={styles.heroSafe}>
-            <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={12}>
-              <Icon name="chevron.left" size={20} color="#FFFFFF" />
-            </Pressable>
+            <View style={styles.heroActions}>
+              <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={12}>
+                <Icon name="chevron.left" size={20} color="#FFFFFF" />
+              </Pressable>
+              <Pressable
+                onPress={() => void shareLewaItem(service.title, service.summary)}
+                style={styles.backButton}
+                hitSlop={12}
+                accessibilityLabel={`Share ${service.title}`}
+              >
+                <Icon name="square.and.arrow.up" size={18} color="#FFFFFF" />
+              </Pressable>
+            </View>
             <View style={styles.heroBottom}>
               <StatusBadge label={service.category} tone="primary" />
               <ThemedText type="display" style={styles.heroTitle}>
@@ -173,6 +189,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.light.background },
   hero: { height: 380, overflow: 'hidden' },
   heroSafe: { flex: 1, padding: Spacing.xl, justifyContent: 'space-between' },
+  heroActions: { flexDirection: 'row', justifyContent: 'space-between' },
   backButton: {
     width: 40,
     height: 40,

@@ -49,6 +49,9 @@ Deno.serve(async (req) => {
         .single();
       if (error || !booking) return json({ error: 'Booking not found' }, 404);
       if (booking.user_id !== userData.user.id) return json({ error: 'Forbidden' }, 403);
+      if (!(await bookingCanStartCheckout(admin, booking))) {
+        return json({ error: 'This booking is not awaiting payment' }, 409);
+      }
 
       const { data: service } = await admin
         .from('tourism_services')
@@ -59,7 +62,6 @@ Deno.serve(async (req) => {
       amount = service.pricing_unit === 'per_guest' ? Number(service.price) * booking.guests : Number(service.price);
       currency = service.currency ?? 'KES';
       bookingId = booking.id;
-      await admin.from('bookings').update({ amount, currency, status: 'pending_payment', payment_status: 'pending' }).eq('id', booking.id);
     } else {
       const { data: donation, error } = await admin
         .from('donations')
@@ -68,8 +70,12 @@ Deno.serve(async (req) => {
         .single();
       if (error || !donation) return json({ error: 'Donation not found' }, 404);
       if (donation.user_id && donation.user_id !== userData.user.id) return json({ error: 'Forbidden' }, 403);
+      if (donation.status !== 'pending' && donation.status !== 'failed') {
+        return json({ error: 'This donation is not awaiting payment' }, 409);
+      }
       amount = Number(donation.amount);
       currency = donation.currency ?? 'KES';
+      if (currency === 'KES' && amount < 100) return json({ error: 'Minimum gift is KSh 100' }, 400);
       donationId = donation.id;
     }
 
@@ -88,8 +94,14 @@ Deno.serve(async (req) => {
         amount: amountMinor,
         currency,
         reference,
-        callback_url: 'hafsalewa://paystack-callback',
-        metadata: { purpose: body.purpose, bookingId, donationId, userId: userData.user.id },
+        callback_url: 'https://standard.paystack.co/close',
+        metadata: {
+          purpose: body.purpose,
+          bookingId,
+          donationId,
+          userId: userData.user.id,
+          cancel_action: 'https://standard.paystack.co/cancel',
+        },
       }),
     });
     const initJson = await initRes.json();
@@ -118,10 +130,30 @@ Deno.serve(async (req) => {
     if (payErr) return json({ error: payErr.message }, 500);
 
     if (donationId) {
-      await admin.from('donations').update({ payment_id: payment.id, status: 'processing' }).eq('id', donationId);
+      const { data: moved, error: moveErr } = await admin
+        .from('donations')
+        .update({ payment_id: payment.id, status: 'processing' })
+        .eq('id', donationId)
+        .in('status', ['pending', 'failed'])
+        .select('id');
+      if (moveErr) return json({ error: moveErr.message }, 500);
+      if (!moved?.length) {
+        await admin.from('payments').update({ status: 'cancelled' }).eq('id', payment.id);
+        return json({ error: 'This donation is not awaiting payment' }, 409);
+      }
     }
     if (bookingId) {
-      await admin.from('bookings').update({ payment_status: 'processing', status: 'payment_verification' }).eq('id', bookingId);
+      const { data: moved, error: moveErr } = await admin
+        .from('bookings')
+        .update({ amount, currency, payment_status: 'processing', status: 'payment_verification' })
+        .eq('id', bookingId)
+        .in('status', ['pending_payment', 'payment_verification'])
+        .select('id');
+      if (moveErr) return json({ error: moveErr.message }, 500);
+      if (!moved?.length) {
+        await admin.from('payments').update({ status: 'cancelled' }).eq('id', payment.id);
+        return json({ error: 'This booking is not awaiting payment' }, 409);
+      }
     }
 
     return json({
@@ -136,6 +168,43 @@ Deno.serve(async (req) => {
     return json({ error: err instanceof Error ? err.message : 'Unexpected error' }, 500);
   }
 });
+
+async function bookingCanStartCheckout(
+  admin: {
+    from: (table: string) => {
+      select: (cols: string) => {
+        eq: (col: string, val: string) => {
+          order: (col: string, opts: { ascending: boolean }) => {
+            limit: (n: number) => {
+              maybeSingle: () => Promise<{ data: { status?: string; provider_response_summary?: unknown } | null; error: { message: string } | null }>;
+            };
+          };
+        };
+      };
+    };
+  },
+  booking: { id: string; status?: string },
+): Promise<boolean> {
+  if (booking.status === 'pending_payment') return true;
+  if (booking.status !== 'payment_verification') return false;
+
+  const { data: latest, error } = await admin
+    .from('payments')
+    .select('status, provider_response_summary')
+    .eq('booking_id', booking.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!latest) return false;
+  const status = String(latest.status ?? '');
+  if (status === 'failed' || status === 'abandoned') return true;
+  const summary = latest.provider_response_summary;
+  const providerStatus = summary && typeof summary === 'object'
+    ? String((summary as { status?: unknown }).status ?? '')
+    : '';
+  return providerStatus === 'failed' || providerStatus === 'abandoned';
+}
 
 function json(payload: unknown, status = 200) {
   return new Response(JSON.stringify(payload), {

@@ -1,21 +1,26 @@
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { EmptyState, ErrorState, Icon, ImageWithFallback, LoadingState, SectionHeader, StatusBadge } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { getWildlifeById } from '@/services/wildlife';
+import { shareLewaItem } from '@/utils/share';
 
 export default function WildlifeDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: species, isLoading, error } = useQuery({
+  const { data: species, isLoading, error, refetch } = useQuery({
     queryKey: ['wildlife', id],
     queryFn: () => getWildlifeById(id!),
     enabled: Boolean(id),
   });
+  const refreshSpecies = useCallback(() => refetch(), [refetch]);
+  const { refreshControl } = usePullToRefresh(refreshSpecies, { tintColor: '#FFFFFF' });
 
   if (isLoading) {
     return (
@@ -53,10 +58,14 @@ export default function WildlifeDetailScreen() {
   return (
     <View style={styles.root}>
       <Stack.Screen options={{ headerShown: false }} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        refreshControl={refreshControl}
+      >
         <View style={styles.hero}>
           <ImageWithFallback
-            uri={species.heroImageUrl ?? species.imageUrl}
+            uri={species.imageUrl ?? species.heroImageUrl}
             style={StyleSheet.absoluteFill}
             fallbackIcon="pawprint.fill"
           />
@@ -66,9 +75,19 @@ export default function WildlifeDetailScreen() {
             style={StyleSheet.absoluteFill}
           />
           <SafeAreaView edges={['top']} style={styles.heroSafe}>
-            <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={12}>
-              <Icon name="chevron.left" size={20} color="#FFFFFF" />
-            </Pressable>
+            <View style={styles.heroActions}>
+              <Pressable onPress={() => router.back()} style={styles.backButton} hitSlop={12}>
+                <Icon name="chevron.left" size={20} color="#FFFFFF" />
+              </Pressable>
+              <Pressable
+                onPress={() => void shareLewaItem(species.name, species.scientificName)}
+                style={styles.backButton}
+                hitSlop={12}
+                accessibilityLabel={`Share ${species.name}`}
+              >
+                <Icon name="square.and.arrow.up" size={18} color="#FFFFFF" />
+              </Pressable>
+            </View>
             <View style={styles.heroBottom}>
               {species.conservationStatus ? <StatusBadge label={species.conservationStatus} tone="warning" /> : null}
               <ThemedText type="display" style={styles.heroTitle}>
@@ -123,9 +142,10 @@ export default function WildlifeDetailScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.light.background },
-  scroll: { paddingBottom: Spacing.huge },
+  scroll: { paddingBottom: Spacing.huge, flexGrow: 1 },
   hero: { height: 380, overflow: 'hidden' },
   heroSafe: { flex: 1, padding: Spacing.xl, justifyContent: 'space-between' },
+  heroActions: { flexDirection: 'row', justifyContent: 'space-between' },
   backButton: {
     width: 40,
     height: 40,

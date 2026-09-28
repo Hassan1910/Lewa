@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,6 +9,7 @@ import { PaystackCheckoutModal, type PaystackCheckoutResult } from '@/components
 import { ThemedText } from '@/components/themed-text';
 import { Button, EmptyState, ErrorState, Icon, ImageWithFallback, LoadingState, SectionHeader, StickyActionBar, stickyActionBarScrollPadding, useStickyActionBarInset } from '@/components/ui';
 import { Colors, FontFamily, Radius, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useAuth } from '@/lib/auth-context';
 import { createDonationIntent, getCampaignById } from '@/services/donations';
 import { confirmCheckout, initializePayment, type PaymentInitResult } from '@/services/payments';
@@ -18,15 +19,17 @@ export default function DonationCampaignScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session, profile } = useAuth();
   const bottomInset = useStickyActionBarInset();
-  const { data: campaign, isLoading, error } = useQuery({
+  const { data: campaign, isLoading, error, refetch } = useQuery({
     queryKey: ['donations', id],
     queryFn: () => getCampaignById(id!),
     enabled: Boolean(id),
   });
+  const refreshCampaign = useCallback(() => refetch(), [refetch]);
+  const { refreshControl } = usePullToRefresh(refreshCampaign, { tintColor: '#FFFFFF' });
   const [amount, setAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [checkout, setCheckout] = useState<PaymentInitResult | null>(null);
+  const [checkout, setCheckout] = useState<{ init: PaymentInitResult; donationId: string } | null>(null);
 
   if (isLoading) {
     return (
@@ -88,7 +91,7 @@ export default function DonationCampaignScreen() {
         donationId: intent.id,
         email: session.user.email ?? '',
       });
-      setCheckout(init);
+      setCheckout({ init, donationId: intent.id });
     } catch (err) {
       Alert.alert('Donation', err instanceof Error ? err.message : 'Could not start payment');
     } finally {
@@ -103,13 +106,14 @@ export default function DonationCampaignScreen() {
     setSubmitting(true);
     try {
       const status = await confirmCheckout({
-        paymentId: current.paymentId,
-        reference: result.reference ?? current.reference,
+        paymentId: current.init.paymentId,
+        reference: result.reference ?? current.init.reference,
       });
       router.replace({
         pathname: '/donations/success',
         params: {
-          amount: String(current.amount || finalAmount),
+          donationId: current.donationId,
+          amount: String(current.init.amount || finalAmount),
           campaign: campaign.title,
           status,
         },
@@ -126,7 +130,8 @@ export default function DonationCampaignScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: stickyActionBarScrollPadding(bottomInset) }}
+        contentContainerStyle={{ paddingBottom: stickyActionBarScrollPadding(bottomInset), flexGrow: 1 }}
+        refreshControl={refreshControl}
       >
         <View style={styles.hero}>
           <ImageWithFallback uri={campaign.coverImage} style={StyleSheet.absoluteFill} fallbackIcon="heart.fill" />
@@ -247,7 +252,7 @@ export default function DonationCampaignScreen() {
           trailingIcon={<Icon name="heart.fill" size={16} color="#FFFFFF" />}
         />
       </StickyActionBar>
-      <PaystackCheckoutModal authorizationUrl={checkout?.authorizationUrl ?? null} onComplete={(result) => void onCheckout(result)} />
+      <PaystackCheckoutModal authorizationUrl={checkout?.init.authorizationUrl ?? null} onComplete={(result) => void onCheckout(result)} />
     </View>
   );
 }

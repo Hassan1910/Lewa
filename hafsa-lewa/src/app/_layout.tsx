@@ -7,17 +7,39 @@ import {
   useFonts,
 } from '@expo-google-fonts/manrope';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack, ThemeProvider, type Theme } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useMemo } from 'react';
+import { router, Stack, ThemeProvider, type Theme } from 'expo-router';
+import { useEffect, useMemo, useRef } from 'react';
+import { Alert } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
-import { AuthProvider } from '@/lib/auth-context';
+import { PushRegistration } from '@/components/push-registration';
+import { AuthProvider, useAuth } from '@/lib/auth-context';
 
 SplashScreen.preventAutoHideAsync();
+
+function InactiveAccountGuard() {
+  const { accountNotice, clearAccountNotice } = useAuth();
+  const shown = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!accountNotice) {
+      shown.current = null;
+      return;
+    }
+    if (shown.current === accountNotice) return;
+    shown.current = accountNotice;
+    Alert.alert('Account unavailable', accountNotice, [
+      { text: 'OK', onPress: () => clearAccountNotice() },
+    ]);
+    router.replace('/(auth)/sign-in');
+  }, [accountNotice, clearAccountNotice]);
+
+  return null;
+}
 
 const LewaTheme: Theme = {
   dark: false,
@@ -70,9 +92,11 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
+            <InactiveAccountGuard />
+            <PushRegistration />
             <ThemeProvider value={LewaTheme}>
               <StatusBar style="dark" />
               <Stack
@@ -89,8 +113,11 @@ export default function RootLayout() {
                 <Stack.Screen name="donations/index" />
                 <Stack.Screen name="donations/[id]" options={{ presentation: 'card' }} />
                 <Stack.Screen name="donations/success" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="donations/history" />
+                <Stack.Screen name="donations/record/[id]" options={{ presentation: 'card' }} />
                 <Stack.Screen name="booking/[serviceId]" options={{ presentation: 'card' }} />
                 <Stack.Screen name="bookings/[id]" options={{ presentation: 'card' }} />
+                <Stack.Screen name="booking/status" options={{ presentation: 'card' }} />
                 <Stack.Screen name="booking/confirmation" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="search" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="help" />
@@ -98,10 +125,13 @@ export default function RootLayout() {
                 <Stack.Screen name="about" />
                 <Stack.Screen name="conservation" />
                 <Stack.Screen name="education" />
+                <Stack.Screen name="education/[id]" options={{ presentation: 'card' }} />
                 <Stack.Screen name="community" />
                 <Stack.Screen name="settings/notification-preferences" />
                 <Stack.Screen name="settings/edit-profile" />
                 <Stack.Screen name="settings/payments" />
+                <Stack.Screen name="legal/privacy" />
+                <Stack.Screen name="legal/terms" />
               </Stack>
             </ThemeProvider>
           </AuthProvider>

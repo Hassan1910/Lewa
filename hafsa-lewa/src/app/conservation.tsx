@@ -1,18 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
+import { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ErrorState, Icon, ImageWithFallback, LoadingState, SectionHeader } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { listConservationPrograms } from '@/services/content';
 
 export default function ConservationScreen() {
-  const { data: programs = [], isLoading, error } = useQuery({
+  const { data: programs = [], isLoading, error, refetch } = useQuery({
     queryKey: ['conservation'],
     queryFn: listConservationPrograms,
   });
+  const refreshPrograms = useCallback(() => refetch(), [refetch]);
+  const { refreshControl } = usePullToRefresh(refreshPrograms);
 
   return (
     <View style={styles.root}>
@@ -27,7 +31,7 @@ export default function ConservationScreen() {
         </ThemedText>
       </SafeAreaView>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} refreshControl={refreshControl}>
         <SectionHeader title="Our work" />
         {isLoading ? <LoadingState /> : null}
         {error ? <ErrorState message={(error as Error).message} /> : null}
@@ -69,6 +73,7 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
     paddingBottom: Spacing.huge,
     gap: Spacing.lg,
+    flexGrow: 1,
   },
   card: {
     borderRadius: Radius.large,

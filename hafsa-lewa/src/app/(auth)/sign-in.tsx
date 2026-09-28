@@ -10,7 +10,7 @@ import { Button, Icon, InputField, ScrollScreen } from '@/components/ui';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { authHref, destinationAfterAuth, safeReturnTo } from '@/lib/auth-redirect';
-import { useAuth } from '@/lib/auth-context';
+import { AccountDisabledError, useAuth } from '@/lib/auth-context';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email address'),
@@ -23,7 +23,7 @@ export default function SignInScreen() {
   const theme = useTheme();
   const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>();
   const resumeAt = safeReturnTo(returnTo);
-  const { signIn, resetPassword } = useAuth();
+  const { signIn, resetPassword, accountNotice } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const {
     control,
@@ -41,6 +41,7 @@ export default function SignInScreen() {
       await signIn(values.email.trim(), values.password);
       router.replace(destinationAfterAuth(returnTo));
     } catch (err) {
+      if (err instanceof AccountDisabledError) return;
       const message = err instanceof Error ? err.message : 'Sign-in failed';
       Alert.alert('Sign in', message);
     } finally {
@@ -76,6 +77,11 @@ export default function SignInScreen() {
           <ThemedText type="body" themeColor="textSecondary">
             Sign in to your Lewa account to manage bookings and support conservation.
           </ThemedText>
+          {accountNotice ? (
+            <ThemedText type="body" style={{ color: theme.error }}>
+              {accountNotice}
+            </ThemedText>
+          ) : null}
         </View>
 
         <Controller

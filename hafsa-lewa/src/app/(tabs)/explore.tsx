@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -18,6 +18,7 @@ import {
   WildlifeCard,
 } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { listCommunityPrograms, listConservationPrograms, listEducationResources } from '@/services/content';
 import { listEvents } from '@/services/events';
 import { listTourism } from '@/services/tourism';
@@ -77,6 +78,27 @@ export default function ExploreTab() {
     router.setParams({ category: next });
   };
 
+  const refreshActive = useCallback(() => {
+    const refetchers = {
+      wildlife: wildlifeQ.refetch,
+      tourism: tourismQ.refetch,
+      events: eventsQ.refetch,
+      conservation: conservationQ.refetch,
+      education: educationQ.refetch,
+      community: communityQ.refetch,
+    };
+    return refetchers[category]();
+  }, [
+    category,
+    wildlifeQ.refetch,
+    tourismQ.refetch,
+    eventsQ.refetch,
+    conservationQ.refetch,
+    educationQ.refetch,
+    communityQ.refetch,
+  ]);
+  const { refreshControl } = usePullToRefresh(refreshActive);
+
   return (
     <View style={styles.root}>
       <SafeAreaView edges={['top']} style={styles.header}>
@@ -96,7 +118,11 @@ export default function ExploreTab() {
         </ScrollView>
       </SafeAreaView>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+        refreshControl={refreshControl}
+      >
         {category === 'wildlife' ? (
           wildlifeQ.isLoading ? (
             <LoadingState />
@@ -118,7 +144,6 @@ export default function ExploreTab() {
                       scientificName={w.scientificName}
                       imageUrl={w.imageUrl}
                       conservationStatus={w.conservationStatus}
-                      variant="compact"
                       onPress={() => router.push(`/wildlife/${w.id}`)}
                     />
                   </View>
@@ -270,7 +295,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.background,
   },
   chips: { flexDirection: 'row', gap: Spacing.sm, paddingBottom: Spacing.md },
-  content: { paddingBottom: Spacing.huge },
+  content: { paddingBottom: Spacing.huge, flexGrow: 1 },
   subChips: { flexDirection: 'row', gap: Spacing.sm, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md },
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: Spacing.xl, gap: Spacing.md },
   gridItem: { width: '48%' },

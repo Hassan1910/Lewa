@@ -12,12 +12,38 @@ export type AnnouncementCardProps = {
   isoDate: string;
   tone?: 'default' | 'urgent';
   onPress?: () => void;
+  variant?: 'default' | 'row';
 };
 
-export function AnnouncementCard({ title, body, isoDate, tone = 'default', onPress }: AnnouncementCardProps) {
+export function AnnouncementCard({
+  title,
+  body,
+  isoDate,
+  tone = 'default',
+  onPress,
+  variant = 'default',
+}: AnnouncementCardProps) {
   const theme = useTheme();
   const urgent = tone === 'urgent';
   const accent = urgent ? theme.error : theme.primary;
+
+  if (variant === 'row') {
+    return (
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={title}
+        style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}
+      >
+        <ThemedText type="caption" style={{ color: urgent ? accent : theme.textSecondary }}>
+          {formatRelativeTime(isoDate)}
+        </ThemedText>
+        <ThemedText type="bodyMedium" numberOfLines={2}>
+          {title}
+        </ThemedText>
+      </Pressable>
+    );
+  }
   return (
     <Pressable
       onPress={onPress}
@@ -70,5 +96,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
+  },
+  row: {
+    gap: Spacing.xxs,
+    paddingVertical: Spacing.sm,
   },
 });

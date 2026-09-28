@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button, Icon } from '@/components/ui';
+import { LEWA_LANDSCAPE_URL } from '@/constants/imagery';
 import { Colors, Spacing } from '@/constants/theme';
 
 export default function WelcomeScreen() {
@@ -13,7 +14,7 @@ export default function WelcomeScreen() {
     <View style={styles.container}>
       <Image
         source={{
-          uri: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?auto=format&fit=crop&w=1400&q=80',
+          uri: LEWA_LANDSCAPE_URL,
         }}
         style={StyleSheet.absoluteFill}
         contentFit="cover"

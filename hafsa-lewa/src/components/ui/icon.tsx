@@ -37,6 +37,7 @@ const FALLBACK: Record<string, string> = {
   'creditcard.fill': '▭',
   'envelope': '✉',
   'lock': '🔒',
+  'doc.text': '☰',
   'gearshape.fill': '⚙',
   'questionmark.circle': '?',
   'info.circle': 'ⓘ',

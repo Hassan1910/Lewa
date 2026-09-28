@@ -24,6 +24,17 @@ Deno.serve(async (req) => {
     const { reference } = (await req.json()) as { reference?: string };
     if (!reference) return json({ error: 'reference required' }, 400);
 
+    const { data: payment, error: paymentError } = await admin
+      .from('payments')
+      .select('id, user_id')
+      .eq('reference', reference)
+      .maybeSingle();
+    if (paymentError) return json({ error: paymentError.message }, 500);
+    if (!payment) return json({ error: 'Payment not found' }, 404);
+    if (!payment.user_id || payment.user_id !== userData.user.id) {
+      return json({ error: 'Forbidden' }, 403);
+    }
+
     const secret = await getPaystackSecret(admin);
     if (!secret) return json({ error: 'PAYSTACK_SECRET_KEY is not configured' }, 500);
 
@@ -31,7 +42,19 @@ Deno.serve(async (req) => {
       headers: { Authorization: `Bearer ${secret}` },
     });
     const payload = await res.json();
-    const success = payload?.data?.status === 'success';
+    const paystackStatus = String(payload?.data?.status ?? '');
+    // Leave an open checkout alone. Failing it here would let the app start a second charge.
+    if (
+      paystackStatus &&
+      paystackStatus !== 'success' &&
+      paystackStatus !== 'failed' &&
+      paystackStatus !== 'abandoned' &&
+      paystackStatus !== 'reversed'
+    ) {
+      const status = paystackStatus === 'ongoing' || paystackStatus === 'processing' ? 'processing' : 'pending';
+      return json({ status });
+    }
+    const success = paystackStatus === 'success';
     const { applyVerifiedPayment } = await import('../_shared/apply-payment.ts');
     const status = await applyVerifiedPayment(admin, {
       reference,

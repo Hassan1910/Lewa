@@ -114,6 +114,18 @@ export type Booking = {
   createdAt: string;
 };
 
+export type BookingGuest = {
+  fullName: string;
+  email: string | null;
+  phone: string | null;
+};
+
+export type BookingDetail = Booking & {
+  specialRequests: string | null;
+  meetingPoint: string | null;
+  leadGuest: BookingGuest | null;
+};
+
 export type ConservationProgram = {
   id: string;
   title: string;

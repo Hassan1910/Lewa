@@ -1,18 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
+import { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button, ErrorState, Icon, LoadingState, SectionHeader } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { listCommunityPrograms } from '@/services/content';
 
 export default function CommunityScreen() {
-  const { data: programs = [], isLoading, error } = useQuery({
+  const { data: programs = [], isLoading, error, refetch } = useQuery({
     queryKey: ['community'],
     queryFn: listCommunityPrograms,
   });
+  const refreshPrograms = useCallback(() => refetch(), [refetch]);
+  const { refreshControl } = usePullToRefresh(refreshPrograms);
 
   return (
     <View style={styles.root}>
@@ -27,7 +31,7 @@ export default function CommunityScreen() {
         </ThemedText>
       </SafeAreaView>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} refreshControl={refreshControl}>
         <SectionHeader title="Programmes" />
         {isLoading ? <LoadingState /> : null}
         {error ? <ErrorState message={(error as Error).message} /> : null}
@@ -70,6 +74,7 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
     paddingBottom: Spacing.huge,
     gap: Spacing.lg,
+    flexGrow: 1,
   },
   card: {
     padding: Spacing.lg,

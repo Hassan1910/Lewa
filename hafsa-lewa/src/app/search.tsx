@@ -1,23 +1,26 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { EmptyState, Icon, ImageWithFallback, SearchBar } from '@/components/ui';
 import { Colors, Radius, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { searchAll, type SearchResult } from '@/services/search';
 
 const SUGGESTIONS = ['Rhino', 'Marathon', 'Safari', 'Community', 'Elephant', 'Photography'];
 
 export default function SearchScreen() {
   const [query, setQuery] = useState('');
-  const { data: results = [] } = useQuery({
+  const { data: results = [], refetch } = useQuery({
     queryKey: ['search', query],
     queryFn: () => searchAll(query),
     enabled: query.trim().length > 0,
   });
+  const refreshResults = useCallback(() => refetch(), [refetch]);
+  const { refreshControl } = usePullToRefresh(refreshResults);
 
   const goto = (result: SearchResult) => router.push(result.href as never);
 
@@ -63,6 +66,7 @@ export default function SearchScreen() {
           data={results}
           keyExtractor={(r) => r.id}
           contentContainerStyle={styles.list}
+          refreshControl={refreshControl}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           renderItem={({ item }) => (
             <Pressable style={styles.row} onPress={() => goto(item)}>
@@ -122,6 +126,7 @@ const styles = StyleSheet.create({
   list: {
     paddingHorizontal: Spacing.xl,
     paddingBottom: Spacing.huge,
+    flexGrow: 1,
   },
   separator: {
     height: 1,

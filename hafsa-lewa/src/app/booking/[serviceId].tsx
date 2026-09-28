@@ -12,7 +12,7 @@ import { authHref } from '@/lib/auth-redirect';
 import { useAuth } from '@/lib/auth-context';
 import { createBooking } from '@/services/bookings';
 import { confirmCheckout, initializePayment, type PaymentInitResult } from '@/services/payments';
-import { calculateTourismTotal, getTourismById, getTourismPricingLabel } from '@/services/tourism';
+import { calculateTourismTotal, getTourismById, getTourismPricingLabel, listOpenAvailability } from '@/services/tourism';
 import { formatCurrency, formatDateOnly } from '@/utils/format';
 
 type Step = 'date' | 'guests' | 'details' | 'review';
@@ -24,17 +24,6 @@ const STEPS: { key: Step; label: string }[] = [
   { key: 'review', label: 'Review' },
 ];
 
-function nextNDays(n: number): Date[] {
-  const days: Date[] = [];
-  for (let i = 1; i <= n; i += 1) {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    d.setHours(6, 0, 0, 0);
-    days.push(d);
-  }
-  return days;
-}
-
 export default function BookingScreen() {
   const { serviceId } = useLocalSearchParams<{ serviceId: string }>();
   const { session, profile } = useAuth();
@@ -42,6 +31,11 @@ export default function BookingScreen() {
   const { data: service, isLoading } = useQuery({
     queryKey: ['tourism', serviceId],
     queryFn: () => getTourismById(serviceId!),
+    enabled: Boolean(serviceId),
+  });
+  const availability = useQuery({
+    queryKey: ['availability', serviceId],
+    queryFn: () => listOpenAvailability(serviceId!),
     enabled: Boolean(serviceId),
   });
 
@@ -52,10 +46,22 @@ export default function BookingScreen() {
   const [emailOverride, setEmailOverride] = useState<string | null>(null);
   const [phone, setPhone] = useState(profile?.phone ?? '');
   const [submitting, setSubmitting] = useState(false);
-  const [checkout, setCheckout] = useState<{ init: PaymentInitResult; bookingReference: string } | null>(null);
+  const [checkout, setCheckout] = useState<{
+    init: PaymentInitResult;
+    bookingId: string;
+    bookingReference: string;
+  } | null>(null);
   const name = nameOverride ?? profile?.full_name ?? '';
   const email = emailOverride ?? session?.user.email ?? profile?.email ?? '';
 
+  const slots = availability.data ?? [];
+  const selectedIso = date
+    ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Nairobi' }).format(date)
+    : null;
+  const selectedSlot = slots.find((slot) => slot.date === selectedIso) ?? null;
+  const guestMax = service
+    ? Math.min(service.capacity, selectedSlot?.remaining ?? service.capacity)
+    : 1;
   const unitLabel = service ? getTourismPricingLabel(service) : 'per guest';
   const total = service ? calculateTourismTotal(service, guests) : 0;
   const stepIndex = STEPS.findIndex((s) => s.key === step);
@@ -127,7 +133,7 @@ export default function BookingScreen() {
         bookingId: booking.id,
         email,
       });
-      setCheckout({ init, bookingReference: booking.reference });
+      setCheckout({ init, bookingId: booking.id, bookingReference: booking.reference });
     } catch (err) {
       Alert.alert('Payment', err instanceof Error ? err.message : 'Could not start payment');
     } finally {
@@ -148,6 +154,7 @@ export default function BookingScreen() {
       router.replace({
         pathname: '/booking/confirmation',
         params: {
+          bookingId: current.bookingId,
           reference: current.bookingReference,
           serviceTitle: service.title,
           date: date?.toISOString() ?? '',
@@ -203,12 +210,29 @@ export default function BookingScreen() {
       >
         {step === 'date' ? (
           <View style={styles.list}>
-            {nextNDays(10).map((d) => {
-              const selected = date?.toDateString() === d.toDateString();
+            {availability.isLoading ? <LoadingState label="Checking open dates" /> : null}
+            {availability.isError ? (
+              <ThemedText type="bodySmall" themeColor="textSecondary">
+                {(availability.error as Error).message}
+              </ThemedText>
+            ) : null}
+            {!availability.isLoading && !availability.isError && slots.length === 0 ? (
+              <EmptyState
+                icon="calendar"
+                title="No open dates"
+                message="Every published date for this experience is full. Check again later."
+              />
+            ) : null}
+            {slots.map((slot) => {
+              const selected = selectedIso === slot.date;
+              const slotDate = new Date(`${slot.date}T06:00:00+03:00`);
               return (
                 <Pressable
-                  key={d.toISOString()}
-                  onPress={() => setDate(d)}
+                  key={slot.date}
+                  onPress={() => {
+                    setDate(slotDate);
+                    setGuests((current) => Math.min(Math.max(current, 1), Math.min(service.capacity, slot.remaining)));
+                  }}
                   style={[
                     styles.dateRow,
                     {
@@ -218,9 +242,10 @@ export default function BookingScreen() {
                   ]}
                 >
                   <View>
-                    <ThemedText type="bodyMedium">{formatDateOnly(d.toISOString())}</ThemedText>
+                    <ThemedText type="bodyMedium">{formatDateOnly(slotDate.toISOString())}</ThemedText>
                     <ThemedText type="caption" themeColor="textSecondary">
-                      {d.toLocaleDateString('en-KE', { weekday: 'long' })}
+                      {slotDate.toLocaleDateString('en-KE', { weekday: 'long', timeZone: 'Africa/Nairobi' })}
+                      {` · ${slot.remaining} of ${slot.capacity} seats left`}
                     </ThemedText>
                   </View>
                   {selected ? <Icon name="checkmark.circle.fill" size={20} color={Colors.light.primary} /> : null}
@@ -233,9 +258,11 @@ export default function BookingScreen() {
         {step === 'guests' ? (
           <View style={styles.center}>
             <ThemedText type="body" themeColor="textSecondary">
-              This experience hosts up to {service.capacity} guests.
+              {selectedSlot
+                ? `${selectedSlot.remaining} seats left on this date. The vehicle holds ${service.capacity}.`
+                : `This experience hosts up to ${service.capacity} guests.`}
             </ThemedText>
-            <QuantityStepper value={guests} onChange={setGuests} min={1} max={service.capacity} />
+            <QuantityStepper value={guests} onChange={setGuests} min={1} max={guestMax} />
             <ThemedText type="caption" themeColor="textSecondary">
               {service.pricingUnit === 'per_guest'
                 ? `${formatCurrency(service.price, { currency: service.currency })} ${unitLabel}`

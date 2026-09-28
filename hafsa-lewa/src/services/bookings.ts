@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { Booking } from '@/services/types';
+import type { Booking, BookingDetail, BookingGuest } from '@/services/types';
 
 const SELECT =
   'id, reference, user_id, service_id, service_title, image_url, booking_date, guests, amount, currency, status, payment_status, created_at';
@@ -109,16 +109,47 @@ export async function createBooking(input: NewBookingInput): Promise<Booking> {
   return mapRow(data as Row);
 }
 
-export async function getBookingById(id: string): Promise<Booking | null> {
-  const { data, error } = await supabase.from('bookings').select(SELECT).eq('id', id).maybeSingle();
+export async function getBookingById(id: string): Promise<BookingDetail | null> {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select(`${SELECT}, special_requests`)
+    .eq('id', id)
+    .maybeSingle();
   if (error) throw error;
-  return data ? mapRow(data as Row) : null;
+  if (!data) return null;
+
+  const row = data as Row & { special_requests: string | null };
+  const [guestResult, serviceResult] = await Promise.all([
+    supabase
+      .from('booking_guests')
+      .select('full_name, email, phone')
+      .eq('booking_id', id)
+      .eq('is_lead', true)
+      .limit(1)
+      .maybeSingle(),
+    supabase.from('tourism_services').select('meeting_point').eq('id', row.service_id).maybeSingle(),
+  ]);
+  if (guestResult.error) throw guestResult.error;
+  if (serviceResult.error) throw serviceResult.error;
+
+  const guest = guestResult.data;
+  const leadGuest: BookingGuest | null = guest
+    ? {
+        fullName: guest.full_name,
+        email: guest.email,
+        phone: guest.phone,
+      }
+    : null;
+
+  return {
+    ...mapRow(row),
+    specialRequests: row.special_requests,
+    meetingPoint: serviceResult.data?.meeting_point ?? null,
+    leadGuest,
+  };
 }
 
 export async function cancelBooking(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('bookings')
-    .update({ status: 'cancelled' })
-    .eq('id', id);
+  const { error } = await supabase.rpc('cancel_my_booking', { p_booking_id: id });
   if (error) throw error;
 }

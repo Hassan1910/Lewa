@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Tabs } from 'expo-router';
 import { Platform, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui';
@@ -22,7 +23,11 @@ const TABS: TabConfig[] = [
   { name: 'profile', label: 'Profile', icon: 'person.crop.circle' },
 ];
 
+const TAB_CONTENT_HEIGHT = 56;
+
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
+  const paddingBottom = Math.max(insets.bottom, Platform.OS === 'ios' ? Spacing.sm : 0);
   const { session } = useAuth();
   const { data: badges = 0 } = useQuery({
     queryKey: ['notifications', 'unread-count', session?.user.id ?? 'guest'],
@@ -41,8 +46,8 @@ export default function TabsLayout() {
           borderTopColor: Colors.light.border,
           backgroundColor: Colors.light.surface,
           paddingTop: Spacing.sm,
-          paddingBottom: Platform.OS === 'ios' ? Spacing.sm : Spacing.xs,
-          height: Platform.OS === 'ios' ? 84 : 64,
+          paddingBottom,
+          height: TAB_CONTENT_HEIGHT + paddingBottom,
         },
         tabBarLabelStyle: {
           fontFamily: FontFamily.medium,

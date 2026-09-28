@@ -1,11 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { router, Stack } from 'expo-router';
+import { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { DonationCard, ErrorState, Icon, LoadingState } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { listActiveCampaigns } from '@/services/donations';
 
 export default function DonationsIndex() {
@@ -13,6 +15,8 @@ export default function DonationsIndex() {
     queryKey: ['donations', 'active'],
     queryFn: listActiveCampaigns,
   });
+  const refreshCampaigns = useCallback(() => refetch(), [refetch]);
+  const { refreshControl } = usePullToRefresh(refreshCampaigns);
 
   return (
     <View style={styles.root}>
@@ -26,7 +30,7 @@ export default function DonationsIndex() {
           Support conservation in Kenyan Shillings. Every gift is verified before it is counted.
         </ThemedText>
       </SafeAreaView>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} refreshControl={refreshControl}>
         {isLoading ? <LoadingState /> : null}
         {error ? <ErrorState message={(error as Error).message} onRetry={() => refetch()} /> : null}
         {data.map((c) => (
@@ -50,5 +54,5 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.light.background },
   header: { padding: Spacing.xl, gap: Spacing.sm },
   back: { width: 32, height: 32, justifyContent: 'center' },
-  content: { padding: Spacing.xl, paddingBottom: Spacing.huge, gap: Spacing.lg },
+  content: { padding: Spacing.xl, paddingBottom: Spacing.huge, gap: Spacing.lg, flexGrow: 1 },
 });

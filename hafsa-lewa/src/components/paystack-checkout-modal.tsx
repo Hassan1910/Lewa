@@ -7,6 +7,11 @@ import { ThemedText } from '@/components/themed-text';
 import { Icon } from '@/components/ui';
 import { Colors, Spacing } from '@/constants/theme';
 
+/** Paystack redirects here after a successful charge and after 3DS. */
+export const PAYSTACK_CLOSE_URL = 'https://standard.paystack.co/close';
+/** Set as `metadata.cancel_action` so Cancel returns to the app. */
+export const PAYSTACK_CANCEL_URL = 'https://standard.paystack.co/cancel';
+/** Older transactions still use this custom scheme. */
 export const PAYSTACK_CALLBACK_PREFIX = 'hafsalewa://paystack-callback';
 
 export type PaystackCheckoutResult =
@@ -15,11 +20,19 @@ export type PaystackCheckoutResult =
 
 /** Paystack appends `reference` and `trxref` when it redirects to the callback URL. */
 export function paystackCallbackReference(url: string): string | null {
-  if (!url.toLowerCase().startsWith(PAYSTACK_CALLBACK_PREFIX)) return null;
   const query = url.split('?')[1]?.split('#')[0] ?? '';
   const params = new URLSearchParams(query);
   const reference = params.get('reference') || params.get('trxref');
   return reference && reference.trim() ? reference : null;
+}
+
+function checkoutResult(url: string): PaystackCheckoutResult | null {
+  const lower = url.toLowerCase();
+  if (lower.startsWith(PAYSTACK_CANCEL_URL)) return { status: 'cancelled' };
+  if (lower.startsWith(PAYSTACK_CLOSE_URL) || lower.startsWith(PAYSTACK_CALLBACK_PREFIX)) {
+    return { status: 'completed', reference: paystackCallbackReference(url) };
+  }
+  return null;
 }
 
 type PaystackCheckoutModalProps = {
@@ -43,8 +56,9 @@ export function PaystackCheckoutModal({ authorizationUrl, onComplete }: Paystack
   };
 
   const handleUrl = (url: string): boolean => {
-    if (!url.toLowerCase().startsWith(PAYSTACK_CALLBACK_PREFIX)) return false;
-    finish({ status: 'completed', reference: paystackCallbackReference(url) });
+    const result = checkoutResult(url);
+    if (!result) return false;
+    finish(result);
     return true;
   };
 
